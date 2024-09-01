@@ -1,162 +1,156 @@
-/* global require console process Promise module */
+const express = require('express');
+const WebSocket = require('ws');
+const app = express();
+const port = process.env.PORT || 8080;
 
-const express = require('express'),
-  app = express();
+// Store ships currently in the bounding box
+let shipsData = [];
+let shipCache = {}; // Cache to store ship data
 
-function getRandomInt(max) {
-  return Math.floor(Math.random() * Math.floor(max));
-}
-
-function getTail() {
-  let c = [
-    'a',
-    'b',
-    'c',
-    'd',
-    'e',
-    'f',
-    'g',
-    'h',
-    'i',
-    'j',
-    'k',
-    'l',
-    'm',
-    'n',
-    'o',
-    'p',
-    'q',
-    'r',
-    's',
-    't',
-    'u',
-    'v',
-    'w',
-    'x',
-    'y',
-    'z'
-  ];
-  return `N${getRandomInt(9999)}${c[getRandomInt(c.length - 1)]}`;
-}
-
-function getAirline() {
-  const airlines = [
-    'SWA',
-    'AAL',
-    'BAW',
-    'DAL',
-    'UAE',
-    'KLM',
-    'DLH',
-    'ASA',
-    'UAL',
-    'FDX',
-    'PXM',
-    'SKW',
-    'JBU',
-    'ACA',
-    'QXE',
-    'NKS',
-    'VIR',
-    'LXJ',
-    'QFA'
-  ];
-  return airlines[getRandomInt(airlines.length - 1)];
-}
-
-function getTime() {
-  return '01:23';
-}
-
-function getFlight() {
-  return getRandomInt(2000);
-}
-
-function getHeading() {
-  return getRandomInt(359)
-    .toString()
-    .padStart(3, '0');
-}
-
-function getGate() {
-  const t = ['A', 'B', 'C'][getRandomInt(2)];
-  const g = getRandomInt(30);
-  return `${t}${g}`;
-}
-
-function getCity() {
-  const cities = [
-    'Atlanta',
-    'Baltimore',
-    'Charleston',
-    'Durban',
-    'Edinburgh',
-    'Frankfurt',
-    'Galveston',
-    'Havana',
-    'Iowa City',
-    'Jakarta',
-    'Karachi',
-    'Los Angeles',
-    'Mexico City',
-    'Nairobi',
-    'Ontario',
-    'Pittsburgh',
-    'Quebec City',
-    'Roanoake',
-    'San Diego',
-    'Tallahassee'
-  ];
-  return cities[getRandomInt(20)];
-}
-
-function getTime() {
-  let hrs = getRandomInt(23)
-    .toString()
-    .padStart(2, '0');
-  let mins = getRandomInt(59)
-    .toString()
-    .padStart(2, '0');
-  return `${hrs}${mins}`;
-}
-
-// ========================================================================
-// API
-
-app.use('/api/arrivals', (req, res) => {
-  let r = {
-    data: []
-  };
-
-  for (let i = 0; i < 18; i++) {
-    // Create the data for a row.
-    let data = {
-      airline: getAirline(),
-      flight: getFlight(),
-      city: getCity(),
-      gate: getGate(),
-      scheduled: getTime()
-    };
-
-    // Let's add an occasional delayed flight.
-    data.status = getRandomInt(10) > 7 ? 'B' : 'A';
-    if (data.status === 'B') {
-      data.remarks = `Delayed ${getRandomInt(50)}M`;
-    }
-
-    // Add the row the the response.
-    r.data.push(data);
-  }
-
-  res.json(r);
-});
-
-// ========================================================================
-// STATIC FILES
 app.use('/', express.static('public'));
 
-// ========================================================================
-// WEB SERVER
-const port = process.env.PORT || 8080;
-app.listen(port);
-console.log('split flap started on port ' + port);
+// WebSocket setup to connect to AISStream API
+const socket = new WebSocket('wss://stream.aisstream.io/v0/stream');
+
+function getShipType(typeCode) {
+    if (typeCode >= 70 && typeCode <= 79) return 'Cargo';
+    if (typeCode >= 80 && typeCode <= 89) return 'Tanker';
+    if (typeCode >= 20 && typeCode <= 24) return 'WIG';
+    if (typeCode === 30) return 'Fishing';
+    if (typeCode >= 31 && typeCode <= 32) return 'Towing';
+    if (typeCode === 33) return 'Dredging';
+    if (typeCode === 34) return 'Diving';
+    if (typeCode === 35) return 'Military';
+    if (typeCode === 36) return 'Sailing';
+    if (typeCode === 37) return 'Pleasure';
+    if (typeCode >= 40 && typeCode <= 44) return 'HSC';
+    if (typeCode === 50) return 'Pilot';
+    if (typeCode === 51) return 'SAR';
+    if (typeCode === 52) return 'Tug';
+    if (typeCode === 55) return 'Police';
+    if (typeCode === 58) return 'Medical';
+    if (typeCode >= 60 && typeCode <= 64) return 'Passenger';
+    return 'Other';
+}
+
+socket.onopen = () => {
+    console.log('WebSocket connection opened.');
+
+    // Subscribe to the AISStream with the relevant bounding box
+    const subscriptionMessage = {
+        APIKey: 'b90d644c4476899539d3477f001fe4ee016f5feb',  
+        BoundingBoxes: [[[37.829167, -122.591556], [37.746429, -122.341326]]],  // upper left lower right bridge visible area
+        FilterMessageTypes: ["PositionReport", "ShipStaticData"]
+    };
+
+    socket.send(JSON.stringify(subscriptionMessage));
+};
+
+socket.onmessage = (event) => {
+    const aisMessage = JSON.parse(event.data);
+    console.log('Received AIS Data:', aisMessage);
+
+    if (aisMessage.MessageType === 'PositionReport') {
+        const positionReport = aisMessage.Message.PositionReport;
+        const shipName = aisMessage.MetaData.ShipName.trim();
+        const latitude = positionReport.Latitude.toFixed(4);
+        const longitude = positionReport.Longitude.toFixed(4);
+        const cog = positionReport.Cog ? positionReport.Cog.toFixed(2) : 'N/A';  // Course over Ground
+        const sog = positionReport.Sog ? positionReport.Sog.toFixed(2) : 'N/A';  // Speed over Ground
+
+        // Log the extracted Cog and Sog for debugging
+        console.log(`Extracted Cog: ${cog}, Sog: ${sog}`)
+
+        // Cache or update ship data
+        if (!shipCache[aisMessage.MetaData.MMSI]) {
+            shipCache[aisMessage.MetaData.MMSI] = {
+                flight: shipName,
+                latitude: latitude,
+                longitude: longitude,
+                cog: cog,
+                sog: sog,
+                length: 'Loading...',
+                width: 'Loading...',
+            };
+        } else {
+            // Update location, cog, and sog
+            shipCache[aisMessage.MetaData.MMSI].latitude = latitude;
+            shipCache[aisMessage.MetaData.MMSI].longitude = longitude;
+            shipCache[aisMessage.MetaData.MMSI].cog = cog;
+            shipCache[aisMessage.MetaData.MMSI].sog = sog;
+        }
+
+        const shipInfo = {
+            airline: "AIS", // Placeholder, not used
+            flight: shipCache[aisMessage.MetaData.MMSI].flight,
+            city: latitude,
+            gate: longitude,
+            scheduled: "", // Placeholder, not used
+            status: "", // Placeholder, not used
+            remarks: "", // Placeholder, not used
+            length: shipCache[aisMessage.MetaData.MMSI].length,
+            width: shipCache[aisMessage.MetaData.MMSI].width,
+            cog: shipCache[aisMessage.MetaData.MMSI].cog,
+            sog: shipCache[aisMessage.MetaData.MMSI].sog,
+            type: shipCache[aisMessage.MetaData.MMSI].type // Include type in the shipInfo
+        };
+
+        shipsData.push(shipInfo);
+
+        // Optional: Limit the array size to avoid memory issues
+        if (shipsData.length > 100) {
+            shipsData.shift();  // Remove the oldest entry
+        }
+    }
+
+    if (aisMessage.MessageType === 'ShipStaticData') {
+        const mmsi = aisMessage.MetaData.MMSI;
+        const dimension = aisMessage.Message.ShipStaticData.Dimension;
+        const typeCode = aisMessage.Message.ShipStaticData.Type;
+        const shipType = getShipType(typeCode);
+
+        console.log(`Ship Type: ${shipType}`);
+
+
+        if (dimension) {
+            const length = dimension.A + dimension.B;
+            const width = dimension.C + dimension.D;
+
+            console.log(`Ship Length: ${length}, Width: ${width}`);
+
+            // Cache or update ship length and width
+            if (shipCache[mmsi]) {
+                shipCache[mmsi].length = length;
+                shipCache[mmsi].width = width;
+                shipCache[mmsi].type = shipType;
+            } else {
+                shipCache[mmsi] = {
+                    length: length,
+                    width: width,
+                    type: shipType
+                };
+            }
+        }
+    }
+};
+
+socket.onclose = (event) => {
+    console.log('WebSocket connection closed:', event.code, event.reason);
+};
+
+socket.onerror = (error) => {
+    console.error('WebSocket error:', error);
+};
+
+// API route to serve AIS data directly
+app.get('/api/arrivals', (req, res) => {
+    res.json({ data: shipsData });
+});
+
+app.listen(port, () => {
+    console.log('split flap started on port ' + port);
+});
+
+app.get('/api/shipcache', (req, res) => {
+    res.json(shipCache);
+});

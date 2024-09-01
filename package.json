@@ -7,6 +7,13 @@
   "author": "Pete Butler <pbutler@basdesign.com>",
   "license": "MIT",
   "dependencies": {
-    "express": "^4.17.1"
+    "express": "^4.17.1",
+    "ws": "^7.4.5",  
+    "concurrently": "^6.2.0"  
+  },
+  "scripts": {
+    "start": "concurrently \"node app.js\" \"node ais_stream.js\"",
+    "start-split-flap": "node app.js",
+    "start-ais-stream": "node ais_stream.js"
   }
 }
