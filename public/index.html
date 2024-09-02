@@ -11,14 +11,19 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
     <script src="https://rawgit.com/bbecquet/Leaflet.RotatedMarker/master/leaflet.rotatedMarker.js"></script>
-
+    <style>
+      html, body {
+          display: grid;
+          place-items: center;
+      }
+  </style>
 
 </head>
 <body>
   <!-- Add a div to hold the map -->
-  <div id="map" style="width: 100%; height: 600px;"></div>
+  <div id="map" style="width: 1350px; height: 600px; margin-top: 75px"></div>
 
-    <div id="board" class="chartContainer splitflap">
+    <div id="board" class="chartContainer splitflap" style="margin-left:50px">
 
       <!-- Header: 30px/char, 15px/separator, 120px/logo -->
       <div class="header" style="width:700;margin-left:5px;">Vessel Name</div>
