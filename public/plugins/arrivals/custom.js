@@ -62,23 +62,47 @@ document.addEventListener("DOMContentLoaded", function() {
           shipData[ship.flight].type = ship.type;
         }
 
-        // Create or update the current location with ship_front_icon.png
-        const shipIcon = L.icon({
-          iconUrl: 'img/ship_front_icon.png',
-          iconSize: [32, 32],
-          iconAnchor: [16, 16],
-          popupAnchor: [0, -16]
-        });
+      // Determine the icon based on ship length
+      let shipIconUrl = 'img/boat_top.png'; // Default icon
+      if (shipData[ship.flight].length && parseFloat(shipData[ship.flight].length) > 100) {
+        shipIconUrl = 'img/big_cargo.png'; // Icon for big cargo ships
+      }
 
-        // Check if a marker already exists for the ship
+      // Create or update the current location with the determined icon
+      const shipIcon = L.icon({
+        iconUrl: shipIconUrl,
+        iconSize: [40, 40],
+        iconAnchor: [20, 20], // Centered icon
+        popupAnchor: [0, -16]
+      });
+
+
+        // If course over ground (Cog) is available, use it to rotate the marker
+        const markerOptions = {
+            icon: shipIcon
+          };
+
+        if (ship.cog) {
+            markerOptions.rotationAngle = ship.cog; // Rotate marker based on Cog
+        }
+
+
+
         if (shipMarkers[ship.flight]) {
           // Update the existing marker position
           shipMarkers[ship.flight].setLatLng([latitude, longitude]);
+        
+          // Update the rotation of the existing marker if Cog is available
+          if (ship.cog) {
+            shipMarkers[ship.flight].setRotationAngle(ship.cog);
+          }
         } else {
           // Create a new marker if it doesn't exist
-          const marker = L.marker([latitude, longitude], { icon: shipIcon }).addTo(map);
+          const marker = L.marker([latitude, longitude], markerOptions).addTo(map);
           shipMarkers[ship.flight] = marker;
         }
+        
+
 
         // Bind the popup with the cached length, width, cog, sog, and type data
         const length = shipData[ship.flight].length;
