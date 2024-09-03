@@ -13,12 +13,34 @@ sf.plugins.arrivals = {
 // MAP
 document.addEventListener("DOMContentLoaded", function() {
   // Initialize the map
-  var map = L.map('map').setView([37.8199, -122.4783], 13); // Coordinates for Golden Gate Bridge
+  var map = L.map('map', {
+    center: [37.8199, -122.4783],  // Coordinates for Golden Gate Bridge
+    zoom: 13,
+    zoomControl: false  // Disable the default zoom controls
+  });
+  // Set up the dark mode map tiles
 
-  // Set up the map tiles from OpenStreetMap or another provider
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19,
-  }).addTo(map);
+  const darkTileLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    maxZoom: 40
+    });
+
+  // Add the dark mode tile layer to the map
+  darkTileLayer.addTo(map);
+
+    // Add the HQ icon at the specified coordinates
+    const hqIcon = L.icon({
+      iconUrl: 'img/hq_icon.png', // Path to your HQ icon
+      iconSize: [40, 40], // Size of the icon
+      iconAnchor: [20, 20], // Point of the icon which will correspond to the marker's location
+      popupAnchor: [0, -20] // Point from which the popup should open relative to the iconAnchor
+    });
+  
+    const hqMarker = L.marker([37.799003, -122.420737], { icon: hqIcon }).addTo(map);
+  
+    // Optionally, add a popup to the HQ marker
+    hqMarker.bindPopup("<b>Headquarters</b><br>This is our HQ location.");
+  
+
 
   // Store markers and ship data by ship name
   const shipMarkers = {};
