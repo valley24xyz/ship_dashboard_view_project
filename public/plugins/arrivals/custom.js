@@ -16,7 +16,9 @@ document.addEventListener("DOMContentLoaded", function() {
   var map = L.map('map', {
     center: [37.8199, -122.4783],  // Coordinates for Golden Gate Bridge
     zoom: 13,
-    zoomControl: false  // Disable the default zoom controls
+    zoomControl: false,  // Disable the default zoom controls
+    attributionControl: false  // Disable the attribution control
+
   });
   // Set up the dark mode map tiles
 
