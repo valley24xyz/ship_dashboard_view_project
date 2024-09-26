@@ -33,13 +33,31 @@ function getShipType(typeCode) {
     return 'Other';
 }
 
+// Define yellow bounding box (top left and bottom right coordinates)
+const yellowBoxBounds = {
+    nw: { lat: 37.865543, lng: -122.503163 }, // Northwest (top-left)
+    se: { lat: 37.813665, lng: -122.437426 }  // Southeast (bottom-right)
+};
+
+// Helper function to check if a ship's position is within the yellow box
+function isWithinYellowBox(lat, lng) {
+    return (
+        lat <= yellowBoxBounds.nw.lat &&
+        lat >= yellowBoxBounds.se.lat &&
+        lng >= yellowBoxBounds.nw.lng &&
+        lng <= yellowBoxBounds.se.lng
+    );
+}
+
+
+
 socket.onopen = () => {
     console.log('WebSocket connection opened.');
 
     // Subscribe to the AISStream with the relevant bounding box
     const subscriptionMessage = {
         APIKey: 'b90d644c4476899539d3477f001fe4ee016f5feb',  
-        BoundingBoxes: [[[37.829167, -122.591556], [37.746429, -122.341326]]],  // upper left lower right bridge visible area
+        BoundingBoxes: [[[37.856164, -122.591074], [37.748038, -122.403054]]],  // upper left lower right bridge visible area
         FilterMessageTypes: ["PositionReport", "ShipStaticData"]
     };
 
@@ -65,6 +83,9 @@ socket.onmessage = (event) => {
         console.log('Extracted Cog: ${cog}, Sog: ${sog}')
         
 
+        // Determine if the ship is within the yellow box and set status
+        const status = isWithinYellowBox(latitude, longitude) ? 'A' : 'B';
+
         // Cache or update ship data
         if (!shipCache[aisMessage.MetaData.MMSI]) {
             shipCache[aisMessage.MetaData.MMSI] = {
@@ -75,7 +96,8 @@ socket.onmessage = (event) => {
                 sog: sog,
                 length: 'Loading...',
                 width: 'Loading...',
-                type: shipCache[aisMessage.MetaData.MMSI]?.type || 'Unknown'  // Keep existing type if already available
+                type: shipCache[aisMessage.MetaData.MMSI]?.type || 'Unknown',  // Keep existing type if already available
+                status: status
             };
         } else {
             // Update location, cog, and sog
@@ -83,7 +105,13 @@ socket.onmessage = (event) => {
             shipCache[aisMessage.MetaData.MMSI].longitude = longitude;
             shipCache[aisMessage.MetaData.MMSI].cog = cog;
             shipCache[aisMessage.MetaData.MMSI].sog = sog;
+            shipCache[aisMessage.MetaData.MMSI].status = status;
         }
+
+
+        // Find existing entry in shipsData or create a new one
+        const existingShipIndex = shipsData.findIndex(ship => ship.flight === shipCache[aisMessage.MetaData.MMSI].flight);
+        
 
         const shipInfo = {
             airline: "AIS", // Placeholder, not used
@@ -91,7 +119,7 @@ socket.onmessage = (event) => {
             city: shipCache[aisMessage.MetaData.MMSI].type || "Unknown", // Use "city" for ship type,//SEP17CHANGE
             gate: shipCache[aisMessage.MetaData.MMSI].type || "Unknown", // Use "gate" for ship type //TYPE
             scheduled: "", // Placeholder, not used
-            status: "", // Placeholder, not used
+            status: shipCache[aisMessage.MetaData.MMSI].status, // Use updated status
             remarks: "", // Placeholder, not used
             latitude: latitude,//SEP17CHANGE
             longitude: longitude, //SEP17CHANGE
@@ -102,8 +130,12 @@ socket.onmessage = (event) => {
             type: shipCache[aisMessage.MetaData.MMSI].type // Include type in the shipInfo
         };
 
-        shipsData.push(shipInfo);
-
+        // Update the existing entry or add a new one
+        if (existingShipIndex !== -1) {
+            shipsData[existingShipIndex] = shipInfo;
+        } else {
+            shipsData.push(shipInfo);
+        }
         console.log('Ship ${shipInfo.flight} has Latitude: ${latitude}, Longitude: ${longitude}');
 
 

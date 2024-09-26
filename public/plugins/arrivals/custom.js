@@ -42,6 +42,16 @@ document.addEventListener("DOMContentLoaded", function() {
     // Optionally, add a popup to the HQ marker
     hqMarker.bindPopup("<b>Headquarters</b><br>This is our HQ location.");
   
+      // Draw the yellow bounding box
+   // const bounds = [[37.865543, -122.503163], [37.813665, -122.437426]];  // Upper left and lower right coordinates
+   // const boundingBox = L.rectangle(bounds, { color: "#FFFF00", weight: 2 }).addTo(map);  // Yellow box with stroke weight of 2
+
+   // boundingBox.bindPopup("Tracking Area");
+
+      // Draw the blue bounding box
+   // const blueBounds = [[37.856164, -122.591074], [37.748038, -122.403054]];  // Upper left and lower right coordinates for blue box
+   // const blueBoundingBox = L.rectangle(blueBounds, { color: "#0000FF", weight: 2 }).addTo(map);  // Blue box
+   // blueBoundingBox.bindPopup("Blue Tracking Area");
 
 
   // Store markers and ship data by ship name
@@ -147,5 +157,5 @@ document.addEventListener("DOMContentLoaded", function() {
   fetchShipData();
 
   // Optionally set an interval to refresh the data periodically
-  setInterval(fetchShipData, 5000); // Refresh every 5 seconds
+  setInterval(fetchShipData, 1000); // Refresh every 5 seconds
 });

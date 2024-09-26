@@ -83,9 +83,10 @@
           <div class="character"><span></span></div>
           <div class="character"><span></span></div>
           <div class="character"><span></span></div>
-          <div class="character"><span></span></div>
-          <div class="character"><span></span></div>
-
+        </div>
+        <div class="group status"> <!-- lights -->
+          <div class="sA"></div>
+          <div class="sB"></div>
         </div>
       </div>
     </script>
@@ -121,11 +122,11 @@
         numRows: 12, // number of rows
 
         // OPTIONAL
-        sort: 'scheduled', // the column to sort by
+        sort: 'gate', // the column to sort by
         order: 'asc', // the order to sort by
-        maxResults: 24, // number of items to retrieve from service
-        pageInterval: 30000, // delay between pages (ms)
-        stagger: 2000 // delay between loading rows (ms)
+        maxResults: 12, // number of items to retrieve from service
+        pageInterval: 5000, // delay between pages (ms)
+        stagger: 1000 // delay between loading rows (ms)
       };
 
       $(document).ready(function() {
