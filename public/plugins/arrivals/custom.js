@@ -51,110 +51,83 @@ document.addEventListener("DOMContentLoaded", function() {
   // Function to update the map with ship data
   function updateMap(shipsData) {
     shipsData.forEach(function(ship) {
-      const latitude = parseFloat(ship.city);
-      const longitude = parseFloat(ship.gate);
+        const latitude = parseFloat(ship.latitude);
+        const longitude = parseFloat(ship.longitude);
 
-      if (!isNaN(latitude) && !isNaN(longitude)) {
-        // Check if we already have data for this ship
-        if (!shipData[ship.flight]) {
-          shipData[ship.flight] = {
-            length: 'Loading...',
-            width: 'Loading...',
-            cog: 'Loading...',
-            sog: 'Loading...',
-            type: 'Unknown'  // Initialize type as 'Unknown'
-          };
-        }
+        console.log(`Creating marker for ${ship.flight}, Latitude: ${latitude}, Longitude: ${longitude}`);
 
-        // Log the received type for debugging
-        console.log(`Received type for ${ship.flight}: ${ship.type}`);
+        // Check if latitude and longitude are valid numbers
+        if (!isNaN(latitude) && !isNaN(longitude)) {
+            // Determine the icon based on ship length
+            let shipIconUrl = 'img/boat_top.png';  // Default icon
+            if (ship.length && parseFloat(ship.length) > 100) {
+                shipIconUrl = 'img/big_cargo.png';  // Use cargo ship icon if length > 100m
+            }
 
-        // If we receive length and width, store them
-        if (ship.length && ship.width) {
-          shipData[ship.flight].length = ship.length;
-          shipData[ship.flight].width = ship.width;
-        }
+            const shipIcon = L.icon({
+                iconUrl: shipIconUrl,
+                iconSize: [40, 40],
+                iconAnchor: [20, 20],
+                popupAnchor: [0, -16]
+            });
 
-        // Continuously update Cog and Sog (from PositionReport)
-        if (ship.cog && ship.sog) {
-          shipData[ship.flight].cog = ship.cog;
-          shipData[ship.flight].sog = ship.sog;
-        }
+            const markerOptions = { icon: shipIcon };
 
-        // Update the type if received (from ShipStaticData)
-        if (ship.type && ship.type !== 'Unknown') {
-          shipData[ship.flight].type = ship.type;
-        }
+            // If Course Over Ground (Cog) is available, use it to rotate the marker
+            if (ship.cog) {
+                markerOptions.rotationAngle = parseFloat(ship.cog);
+            }
 
-      // Determine the icon based on ship length
-      let shipIconUrl = 'img/boat_top.png'; // Default icon
-      if (shipData[ship.flight].length && parseFloat(shipData[ship.flight].length) > 100) {
-        shipIconUrl = 'img/big_cargo.png'; // Icon for big cargo ships
-      }
+            // Check if the marker for the ship already exists
+            if (!shipMarkers[ship.flight]) {
+                console.log(`Creating new marker for ${ship.flight} at [${latitude}, ${longitude}]`);
+                const marker = L.marker([latitude, longitude], markerOptions).addTo(map);
+                shipMarkers[ship.flight] = marker;
 
-      // Create or update the current location with the determined icon
-      const shipIcon = L.icon({
-        iconUrl: shipIconUrl,
-        iconSize: [40, 40],
-        iconAnchor: [20, 20], // Centered icon
-        popupAnchor: [0, -16]
-      });
+                // Bind the popup with ship data
+                const popupContent = `<b>${ship.flight}</b>
+                <br>Length: ${ship.length || 'N/A'}
+                <br>Width: ${ship.width || 'N/A'}
+                <br>Cog: ${ship.cog || 'N/A'}
+                <br>Sog: ${ship.sog || 'N/A'}
+                <br>Type: ${ship.type || 'Unknown'}<br>
+                `;
+                marker.bindPopup(popupContent);
 
+            } else {
+                console.log(`Updating marker for ${ship.flight} at [${latitude}, ${longitude}]`);
+                shipMarkers[ship.flight].setLatLng([latitude, longitude]);
 
-        // If course over ground (Cog) is available, use it to rotate the marker
-        const markerOptions = {
-            icon: shipIcon
-          };
+                // Update marker rotation if Cog is available
+                if (ship.cog) {
+                    shipMarkers[ship.flight].setRotationAngle(parseFloat(ship.cog));
+                }
 
-        if (ship.cog) {
-            markerOptions.rotationAngle = ship.cog; // Rotate marker based on Cog
-        }
+                // Update popup content
+                const popupContent = `
+                    <b>${ship.flight}</b><br>
+                    Length: ${ship.length || 'N/A'}<br>
+                    Width: ${ship.width || 'N/A'}<br>
+                    Cog: ${ship.cog || 'N/A'}<br>
+                    Sog: ${ship.sog || 'N/A'}<br>
+                    Type: ${ship.type || 'Unknown'}<br>
+                `;                
+                shipMarkers[ship.flight].setPopupContent(popupContent);
+            }
 
-
-
-        if (shipMarkers[ship.flight]) {
-          // Update the existing marker position
-          shipMarkers[ship.flight].setLatLng([latitude, longitude]);
-        
-          // Update the rotation of the existing marker if Cog is available
-          if (ship.cog) {
-            shipMarkers[ship.flight].setRotationAngle(ship.cog);
-          }
+            // Optional hover behavior to show popup
+            shipMarkers[ship.flight].on('mouseover', function () {
+                this.openPopup();
+            });
+            shipMarkers[ship.flight].on('mouseout', function () {
+                this.closePopup();
+            });
         } else {
-          // Create a new marker if it doesn't exist
-          const marker = L.marker([latitude, longitude], markerOptions).addTo(map);
-          shipMarkers[ship.flight] = marker;
+            console.error(`Invalid latitude or longitude for ship ${ship.flight}: Latitude: ${latitude}, Longitude: ${longitude}`);
         }
-        
-
-
-        // Bind the popup with the cached length, width, cog, sog, and type data
-        const length = shipData[ship.flight].length;
-        const width = shipData[ship.flight].width;
-        const cog = shipData[ship.flight].cog;
-        const sog = shipData[ship.flight].sog;
-        const type = shipData[ship.flight].type;
-
-        const popupContent = `<b>${ship.flight}</b><br>Length: ${length}<br>Width: ${width}<br>Cog: ${cog}<br>Sog: ${sog}<br>Type: ${type}`;
-        shipMarkers[ship.flight].bindPopup(popupContent);
-
-        // Ensure the popup reflects the latest data
-        if (shipMarkers[ship.flight]._popup && shipMarkers[ship.flight]._popup.isOpen()) {
-          shipMarkers[ship.flight]._popup.setContent(popupContent);
-        }
-        
-        // Optionally add hover behavior
-        shipMarkers[ship.flight].on('mouseover', function () {
-          this.openPopup();
-        });
-        shipMarkers[ship.flight].on('mouseout', function () {
-          this.closePopup();
-        });
-      } else {
-        console.error('Invalid ship data, marker not created:', ship);
-      }
     });
-  }
+}
+
 
   // Fetch and update ship data
   function fetchShipData() {
