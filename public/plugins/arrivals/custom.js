@@ -118,8 +118,6 @@ document.addEventListener("DOMContentLoaded", function() {
                     <b>${ship.flight}</b><br>
                     Length: ${ship.length || 'N/A'}<br>
                     Width: ${ship.width || 'N/A'}<br>
-                    Cog: ${ship.cog || 'N/A'}<br>
-                    Sog: ${ship.sog || 'N/A'}<br>
                     Type: ${ship.type || 'Unknown'}<br>
                 `;                
                 shipMarkers[ship.flight].setPopupContent(popupContent);
