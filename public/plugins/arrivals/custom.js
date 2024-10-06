@@ -10,10 +10,11 @@ sf.plugins.arrivals = {
   }
 };
 
+var map;
 // MAP
 document.addEventListener("DOMContentLoaded", function() {
   // Initialize the map
-  var map = L.map('map', {
+ map = L.map('map', {
     center: [37.8199, -122.4783],  // Coordinates for Golden Gate Bridge
     zoom: 13,
     zoomControl: false,  // Disable the default zoom controls
@@ -61,6 +62,12 @@ document.addEventListener("DOMContentLoaded", function() {
   // Function to update the map with ship data
   function updateMap(shipsData) {
     shipsData.forEach(function(ship) {
+
+        // Skip the ship if the name is undefined or null
+        if (!ship.flight) {
+            console.warn('Skipping ship with undefined name:', ship);
+            return; // Skip this iteration and do not add this ship to the map
+          }
         const latitude = parseFloat(ship.latitude);
         const longitude = parseFloat(ship.longitude);
 
@@ -94,13 +101,15 @@ document.addEventListener("DOMContentLoaded", function() {
                 const marker = L.marker([latitude, longitude], markerOptions).addTo(map);
                 shipMarkers[ship.flight] = marker;
 
-                // Bind the popup with ship data
+                const lengthText = ship.length && ship.length !== 'Loading...' ? `${ship.length}` : 'Loading...';
+                const widthText = ship.width && ship.width !== 'Loading...' ? `${ship.width}` : 'Loading...';
+                
                 const popupContent = `<b>${ship.flight}</b>
-                <br>Length: ${ship.length || 'N/A'}
-                <br>Width: ${ship.width || 'N/A'}
-                <br>Cog: ${ship.cog || 'N/A'}
-                <br>Sog: ${ship.sog || 'N/A'}
-                <br>Type: ${ship.type || 'Unknown'}<br>
+                  <br>Length (m): ${lengthText}
+                  <br>Width (m): ${widthText}
+                  <br>COG: ${ship.cog || 'N/A'}°
+                  <br>SOG: ${ship.sog || 'N/A'} knots
+                  <br>Type: ${ship.type || 'Unknown'}
                 `;
                 marker.bindPopup(popupContent);
 
@@ -116,8 +125,8 @@ document.addEventListener("DOMContentLoaded", function() {
                 // Update popup content
                 const popupContent = `
                     <b>${ship.flight}</b><br>
-                    Length: ${ship.length || 'N/A'}<br>
-                    Width: ${ship.width || 'N/A'}<br>
+                    Length: ${ship.length || 'N/A'} m<br>
+                    Width: ${ship.width || 'N/A'} m<br>
                     Type: ${ship.type || 'Unknown'}<br>
                 `;                
                 shipMarkers[ship.flight].setPopupContent(popupContent);
@@ -157,3 +166,97 @@ document.addEventListener("DOMContentLoaded", function() {
   // Optionally set an interval to refresh the data periodically
   setInterval(fetchShipData, 1000); // Refresh every 5 seconds
 });
+
+// ===========================================================
+// Plane Stuff
+// ===========================================================
+// Global object to track plane markers by flight
+// Global object to track plane markers by flight// Global object to track plane markers by flight
+// Global object to track plane markers by flight
+const planeMarkers = {};
+function updateMapWithPlanes(planesData) {
+  planesData.forEach(function(plane) {
+      const latitude = parseFloat(plane.latitude);
+      const longitude = parseFloat(plane.longitude);
+      const cog = plane.cog ? parseFloat(plane.cog) : null;  // Course over Ground
+      const altitude = plane.altitude || 'N/A';  // Fetch the altitude
+
+      console.log(`Plane ${plane.flight} -> Latitude: ${latitude}, Longitude: ${longitude}, Cog: ${cog}, Altitude: ${altitude}`);
+
+      // Check if latitude and longitude are valid numbers
+      if (!isNaN(latitude) && !isNaN(longitude)) {
+          // Check if the plane already has a marker
+          if (planeMarkers[plane.flight]) {
+              // Update the existing marker's position
+              planeMarkers[plane.flight].setLatLng([latitude, longitude]);
+
+              // If Cog is available, rotate the marker
+              if (cog !== null) {
+                  planeMarkers[plane.flight].setRotationAngle(cog);
+              }
+              console.log(`Updated marker for plane ${plane.flight}`);
+          } else {
+              // Create a new marker if one doesn't exist
+              const planeIcon = L.icon({
+                  iconUrl: 'img/plane_icon.png',  // Path to your plane icon
+                  iconSize: [30, 30], // Adjust size as needed
+                  iconAnchor: [15, 15],
+                  popupAnchor: [0, -15]
+              });
+
+              // Create a new marker and add it to the map
+              const marker = L.marker([latitude, longitude], { icon: planeIcon }).addTo(map);
+
+              // If Cog is available, rotate the marker
+              if (cog !== null) {
+                  marker.setRotationAngle(cog);
+              }
+
+              console.log(`Marker created for plane ${plane.flight}`);
+
+              const popupContent = `<b>${plane.flight}</b>
+              <br>Airline: ${plane.airline}
+              <br>Speed: ${plane.sog || 'N/A'} knots
+              <br>Altitude (baro): ${altitude} m  <!-- Add altitude to popup -->
+              <br>Type: ${plane.type || 'Unknown'}
+              `;
+              
+              marker.bindPopup(popupContent);
+
+              // Store the marker in the global object
+              planeMarkers[plane.flight] = marker;
+
+              // Optional hover behavior to show popup
+              marker.on('mouseover', function () {
+                  this.openPopup();
+              });
+              marker.on('mouseout', function () {
+                  this.closePopup();
+              });
+          }
+      } else {
+          console.error(`Invalid coordinates for plane: ${plane.flight}`);
+      }
+  });
+}
+
+
+// Fetch and update plane data
+function fetchPlaneData() {
+  $.getJSON('/api/planes', function(response) {
+    console.log('API Response:', response); // Log entire response
+    if (response && response.data) {
+        console.log('Fetched planesData:', response.data);
+        updateMapWithPlanes(response.data);
+    } else {
+        console.error('No data received from planes API');
+    }
+ }).fail(function(jqXHR, textStatus, errorThrown) {
+    console.error('Failed to load plane data from API:', textStatus, errorThrown);
+ });
+ 
+}
+
+
+// Fetch the plane data periodically
+setInterval(fetchPlaneData, 60000); // Refresh plane data every 10 seconds

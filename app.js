@@ -33,7 +33,7 @@ function getShipType(typeCode) {
     return 'Other';
 }
 
-// Define yellow bounding box (top left and bottom right coordinates)
+// Define yellow bounding box (top left and bottom right coordinates) (visible area)
 const yellowBoxBounds = {
     nw: { lat: 37.865543, lng: -122.503163 }, // Northwest (top-left)
     se: { lat: 37.813665, lng: -122.437426 }  // Southeast (bottom-right)
@@ -70,7 +70,14 @@ socket.onmessage = (event) => {
 
     if (aisMessage.MessageType === 'PositionReport') {
         const positionReport = aisMessage.Message.PositionReport;
-        const shipName = aisMessage.MetaData.ShipName.trim();
+        const shipName = aisMessage.MetaData.ShipName ? aisMessage.MetaData.ShipName.trim() : null;
+
+    // Only proceed if the ship has a valid name
+    if (!shipName) {
+        console.log('Skipping ship with undefined name');
+        return;  // Skip this entry if no name
+    }
+
         const latitude = parseFloat(positionReport.Latitude.toFixed(4)); // Should be within -90 to 90
         const longitude = parseFloat(positionReport.Longitude.toFixed(4)); // Should be within -180 to 180  
         
@@ -121,8 +128,8 @@ socket.onmessage = (event) => {
             scheduled: "", // Placeholder, not used
             status: shipCache[aisMessage.MetaData.MMSI].status, // Use updated status
             remarks: "", // Placeholder, not used
-            latitude: latitude,//SEP17CHANGE
-            longitude: longitude, //SEP17CHANGE
+            latitude: latitude,
+            longitude: longitude, 
             length: shipCache[aisMessage.MetaData.MMSI].length,
             width: shipCache[aisMessage.MetaData.MMSI].width,
             cog: shipCache[aisMessage.MetaData.MMSI].cog,
@@ -209,3 +216,88 @@ app.listen(port, () => {
 app.get('/api/shipcache', (req, res) => {
     res.json(shipCache);
 });
+
+// =============================================================================
+// Plane stuff
+// =============================================================================
+
+const axios = require('axios');
+
+// OpenSky Bounding Box
+const openskyBoundingBox = {
+
+    nw: { lat: 37.900682, lng: -122.872432 }, // Northwest (top-left)
+    se: { lat: 37.578706, lng: -122.240619 }  // Southeast (bottom-right)
+};
+
+// Function to fetch plane data from OpenSky API
+async function fetchPlaneData() {
+    const url = `https://opensky-network.org/api/states/all?lamin=${openskyBoundingBox.se.lat}&lomin=${openskyBoundingBox.nw.lng}&lamax=${openskyBoundingBox.nw.lat}&lomax=${openskyBoundingBox.se.lng}&extended=1`;
+    try {
+        const response = await axios.get(url, {
+            auth: {
+                username: 'catx123x',
+                password: 'sednyk-0hamtu-jyvbYv'
+            }
+        });
+        console.log('OpenSky API raw response:', response.data);
+        return response.data.states;
+    } catch (error) {
+        console.error('Error fetching plane data:', error);
+        return [];
+    }
+}
+
+
+const aircraftCategoryMap = {
+    0: "Unknown",
+    1: "Unknown",
+    2: "Light",
+    3: "Small",
+    4: "Large",
+    5: "High Vortex Large",
+    6: "Heavy",
+    7: "High Performance",
+    8: "Rotorcraft",
+    9: "Glider",
+    10: "Lighter-than-air",
+    11: "Skydiver",
+    12: "Ultralight",
+    13: "Unknown",
+    14: "UAV",
+    15: "Spacecraft",
+    16: "Emergency",
+    17: "Surface",
+    18: "Obstacle",
+    19: "Obstacle",
+    20: "Obstacle"
+};
+
+const airlineMap = require('./cleanedAirlineMap');  // Use the cleaned airline map
+
+// API route to serve plane data
+// API route to serve plane data
+app.get('/api/planes', async (req, res) => {
+    const planesData = await fetchPlaneData();
+    const formattedPlanes = planesData.map((plane) => {
+        const flightCode = plane[1] || "Unknown";
+        const airlinePrefix = flightCode.trim().slice(0, 3); // Extract the first three characters
+        const airline = airlineMap[airlinePrefix] || "Unknown Airline"; // Lookup in airlineMap
+
+        // Barometric altitude
+        const altitude = plane[7] ? plane[7].toFixed(2) : 'N/A';  // Barometric altitude in meters
+
+        return {
+            flight: flightCode,
+            latitude: plane[6],
+            longitude: plane[5],
+            cog: plane[10] ? plane[10].toFixed(2) : 'N/A',
+            sog: plane[9] ? (plane[9] * 1.94384).toFixed(2) : 'N/A',
+            type: aircraftCategoryMap[plane[8]] || "Unknown",
+            airline: airline,  // Use airline from the airlineMap
+            altitude: altitude // Include altitude in the response
+        };
+    });
+    res.json({ data: formattedPlanes });
+});
+

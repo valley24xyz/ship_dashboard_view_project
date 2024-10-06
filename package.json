@@ -7,9 +7,12 @@
   "author": "Pete Butler <pbutler@basdesign.com>",
   "license": "MIT",
   "dependencies": {
+    "axios": "^1.7.7",
+    "concurrently": "^6.2.0",
+    "csv-parser": "^3.0.0",
+    "csv-writer": "^1.6.0",
     "express": "^4.17.1",
-    "ws": "^7.4.5",  
-    "concurrently": "^6.2.0"  
+    "ws": "^7.4.5"
   },
   "scripts": {
     "start": "concurrently \"node app.js\" \"node ais_stream.js\"",
