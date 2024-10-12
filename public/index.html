@@ -18,21 +18,120 @@
           display: grid;
           place-items: center;
       }
+      .dashboard-header {
+  display: flex;
+  justify-content: left;  /* Align items on both sides */
+  align-items: center;             /* Vertically align items */
+  width: 100%;                     /* Ensure full width */
+  margin-bottom: 10px;             /* Add some spacing below the headers */
+}
+
+.header {
+  font-size: 18px;
+  font-weight: bold;
+}
+
+.toggle-container {
+  display: flex;
+  margin-bottom: 8px;
+  align-items: center;
+  justify-content: flex-end;       /* Align the toggle to the right */
+  width: 200px;                    /* Adjust as necessary for alignment */
+}
+
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 120px;
+  height: 40px;
+  background-color: #f1f1f1;
+  border-radius: 25px;
+  box-shadow: inset 0 0 5px rgba(0,0,0,0.2);
+}
+
+.toggle-switch input {
+  display: none;
+}
+
+.toggle-switch .labels {
+  display: flex;
+  justify-content: space-between;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;  /* This ensures the text is on top */
+}
+
+.toggle-switch .labels label {
+  flex: 1;
+  line-height: 40px;
+  text-align: center;
+  font-weight: bold;
+  cursor: pointer;
+  color: #666;
+}
+
+.toggle-switch input#air:checked ~ .labels label[for="air"],
+.toggle-switch input#sea:checked ~ .labels label[for="sea"] {
+  color: white;
+}
+
+.toggle-switch .slider {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 50%;
+  height: 100%;
+  background-color: #333;
+  border-radius: 25px;
+  transition: 0.3s;
+  z-index: 0;  /* Slider behind the text */
+}
+
+input#sea:checked ~ .slider {
+  left: 50%;
+}
+
+
   </style>
 
 </head>
 <body>
   <!-- Add a div to hold the map -->
   <div id="map" style="width: 1350px; height: 600px; margin-top: 75px"></div>
+<!-- ============================================ -->
+<!-- TOGGLE -->
+<!-- ============================================ -->
 
-    <div id="board" class="chartContainer splitflap" style="margin-left:50px">
+<!-- ============================================ -->
+    <!-- ============================================ -->
+    <!-- ROW TEMPLATE -->
+     <!-- Add a container for the split-flap board -->
+     <div id="board" class="chartContainer splitflap" style="margin-left:50px">
+      <div class="dashboard-header">
+        <div class="header" style="width: 780px; text-align: left">Vessel Name</div>
+        <div class="header" style="width: 380px; text-align: left">Type</div>
+      
+        <!-- Add the toggle switch here -->
+        <div class="toggle-container">
+          <!-- Add the event listeners for the toggle -->
+          <div class="toggle-switch">
+            <input type="radio" id="air" name="toggle" checked onchange="toggleDashboard()">
+            <input type="radio" id="sea" name="toggle" onchange="toggleDashboard()">
 
-      <!-- Header: 30px/char, 15px/separator, 120px/logo -->
-      <div class="header" style="width:700;margin-left:5px;">Vessel Name</div>
-      <div class="header" style="width:210px;margin-left:640px;text-align:left;">
-        Type
+            <div class="labels">
+              <label for="air">Air</label>
+              <label for="sea">Sea</label>
+          </div>
+
+  <span class="slider"></span>
+</div>
+
+        </div>
       </div>
-    </div>
+      
     <!-- END CONTAINER -->
     <!-- ============================================ -->
     <!-- ROW TEMPLATE -->

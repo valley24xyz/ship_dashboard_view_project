@@ -167,6 +167,43 @@ document.addEventListener("DOMContentLoaded", function() {
   setInterval(fetchShipData, 1000); // Refresh every 5 seconds
 });
 
+//=============================================================
+// TOGGLE LOGIC
+//=============================================================
+
+var showingPlanes = false; // Track whether planes or ships are being shown
+
+function toggleDashboard() {
+    const isShowingAir = document.getElementById('air').checked;
+
+    // Update the data source URL and fetch the correct data
+    const dataUrl = isShowingAir ? '/api/planes' : '/api/arrivals';
+    fetchDashboardData(dataUrl);  // Fetch data from the correct endpoint
+
+    // Update the split-flap plugin and reload it with new data
+    sf.options.plugin = isShowingAir ? 'planes' : 'arrivals';  // Update the plugin based on the toggle
+    sf.board.clear();  // Clear the current board content
+    sf.items.load(sf.options);  // Load the new data into the board
+
+    // Dynamically change the headings based on the toggle
+    const headerContainer = document.getElementById('dashboardHeader');
+    if (isShowingAir) {
+        headerContainer.innerHTML = `
+            <div class="header" style="width: 780px; text-align: left">Flight Number</div>
+            <div class="header" style="width: 380px; text-align: left">Airline</div>
+            <div class="header" style="width: 210px; text-align: left">Type</div>
+            <div class="header" style="width: 210px; text-align: left">Country</div>
+        `;
+    } else {
+        headerContainer.innerHTML = `
+            <div class="header" style="width: 780px; text-align: left">Vessel Name</div>
+            <div class="header" style="width: 380px; text-align: left">Type</div>
+            <div class="header" style="width: 210px; text-align: left">Status</div> <!-- Red/Green light for ships -->
+        `;
+    }
+}
+
+
 // ===========================================================
 // Plane Stuff
 // ===========================================================
@@ -259,4 +296,23 @@ function fetchPlaneData() {
 
 
 // Fetch the plane data periodically
-setInterval(fetchPlaneData, 60000); // Refresh plane data every 10 seconds
+setInterval(fetchPlaneData, 120000); // Refresh plane data every 10 seconds
+
+// ===================================================
+// PLANE DASHBOARD TOGGLE
+// ===================================================
+
+sf.plugins.planes = {
+  dataType: 'json',
+
+  url: function(options) {
+    return '/api/planes';  // Fetch from the planes API
+  },
+
+  formatData: function(response) {
+    // Extract only the flight numbers for now
+    return response.data.map(plane => ({
+      flight: plane.flight || 'Unknown Flight'  // Fallback if flight number is missing
+    }));
+  }
+};
