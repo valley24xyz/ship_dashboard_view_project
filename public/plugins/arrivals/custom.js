@@ -13,9 +13,21 @@ sf.plugins.arrivals = {
 var map;
 // MAP
 document.addEventListener("DOMContentLoaded", function() {
+
+    // Access the bounding box coordinates from the global `window.boundingBox`
+    var boundingBox = window.boundingBox;
+    var neLat = boundingBox ? parseFloat(boundingBox.neLat) : null;
+    var neLng = boundingBox ? parseFloat(boundingBox.neLng) : null;
+    var swLat = boundingBox ? parseFloat(boundingBox.swLat) : null;
+    var swLng = boundingBox ? parseFloat(boundingBox.swLng) : null;
+
+    // Calculate the center of the bounding box
+    var centerLat = (neLat + swLat) / 2;
+    var centerLng = (neLng + swLng) / 2;
+
   // Initialize the map
  map = L.map('map', {
-    center: [37.8199, -122.4783],  // Coordinates for Golden Gate Bridge
+    center: [centerLat, centerLng],  // Center the map using the midpoint
     zoom: 13,
     zoomControl: false,  // Disable the default zoom controls
     attributionControl: false  // Disable the attribution control
@@ -30,19 +42,6 @@ document.addEventListener("DOMContentLoaded", function() {
   // Add the dark mode tile layer to the map
   darkTileLayer.addTo(map);
 
-    // Add the HQ icon at the specified coordinates
-    const hqIcon = L.icon({
-      iconUrl: 'img/hq_icon.png', // Path to your HQ icon
-      iconSize: [40, 40], // Size of the icon
-      iconAnchor: [20, 20], // Point of the icon which will correspond to the marker's location
-      popupAnchor: [0, -20] // Point from which the popup should open relative to the iconAnchor
-    });
-  
-    const hqMarker = L.marker([37.799003, -122.420737], { icon: hqIcon }).addTo(map);
-  
-    // Optionally, add a popup to the HQ marker
-    hqMarker.bindPopup("<b>Headquarters</b><br>This is our HQ location.");
-  
       // Draw the yellow bounding box
    // const bounds = [[37.865543, -122.503163], [37.813665, -122.437426]];  // Upper left and lower right coordinates
    // const boundingBox = L.rectangle(bounds, { color: "#FFFF00", weight: 2 }).addTo(map);  // Yellow box with stroke weight of 2
@@ -54,7 +53,13 @@ document.addEventListener("DOMContentLoaded", function() {
    // const blueBoundingBox = L.rectangle(blueBounds, { color: "#0000FF", weight: 2 }).addTo(map);  // Blue box
    // blueBoundingBox.bindPopup("Blue Tracking Area");
 
-
+  // If bounding box coordinates are available, draw the bounding box on the map
+  if (neLat && neLng && swLat && swLng) {
+    const bounds = [[swLat, swLng], [neLat, neLng]];
+    const boundingBox = L.rectangle(bounds, { color: "#FFFF00", weight: 2 }).addTo(map);
+    boundingBox.bindPopup("Selected Tracking Area");
+    map.fitBounds(bounds);  // Adjust the map to fit the bounding box
+  }
   // Store markers and ship data by ship name
   const shipMarkers = {};
   const shipData = {};
@@ -210,6 +215,7 @@ function toggleDashboard() {
 // Global object to track plane markers by flight
 // Global object to track plane markers by flight// Global object to track plane markers by flight
 // Global object to track plane markers by flight
+/*
 const planeMarkers = {};
 function updateMapWithPlanes(planesData) {
   planesData.forEach(function(plane) {
@@ -316,3 +322,4 @@ sf.plugins.planes = {
     }));
   }
 };
+*/
