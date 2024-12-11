@@ -222,8 +222,8 @@ input#sea:checked ~ .slider {
         numRows: 12, // number of rows
 
         // OPTIONAL
-        sort: 'gate', // the column to sort by
-        order: 'asc', // the order to sort by
+//        sort: 'gate', // the column to sort by
+//        order: 'asc', // the order to sort by
         maxResults: 12, // number of items to retrieve from service
         pageInterval: 5000, // delay between pages (ms)
         stagger: 1000 // delay between loading rows (ms)
@@ -257,7 +257,7 @@ input#sea:checked ~ .slider {
   console.log('SouthWest Latitude:', swLat);
   console.log('SouthWest Longitude:', swLng);
 
-  
+
 // Make these variables available globally for custom.js 
 window.boundingBox = { neLat, neLng, swLat, swLng };
 

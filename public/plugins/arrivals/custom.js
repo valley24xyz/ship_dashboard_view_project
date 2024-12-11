@@ -125,12 +125,14 @@ document.addEventListener("DOMContentLoaded", function() {
                     
                     // Create popup content
                     const popupContent = `
-                        <div style="padding: 10px;">
-                            <h4 style="margin: 0 0 5px 0;">${ship.flight}</h4>
-                            <p style="margin: 5px 0;">Speed: ${ship.sog !== 'N/A' ? `${ship.sog} knots` : 'N/A'}</p>
-                            <p style="margin: 5px 0;">Course: ${ship.cog !== 'N/A' ? `${ship.cog}°` : 'N/A'}</p>
-                        </div>
-                    `;
+                    <div style="padding: 10px;">
+                        <h4 style="margin: 0 0 5px 0;">${ship.flight}</h4>
+                        <p style="margin: 5px 0;">Type: ${ship.type || 'Unknown'}</p>
+                        <p style="margin: 5px 0;">Length: ${ship.length || 'N/A'} m</p>
+                        <p style="margin: 5px 0;">Width: ${ship.width || 'N/A'} m</p>
+                        <p style="margin: 5px 0;">Speed: ${ship.sog !== 'N/A' ? `${ship.sog} knots` : 'N/A'}</p>
+                    </div>
+                `;
                     
                     // Bind popup before adding to map
                     marker.bindPopup(popupContent);
@@ -158,12 +160,14 @@ document.addEventListener("DOMContentLoaded", function() {
                 } else {
                     const marker = shipMarkers[ship.flight];
                     const popupContent = `
-                        <div style="padding: 10px;">
-                            <h4 style="margin: 0 0 5px 0;">${ship.flight}</h4>
-                            <p style="margin: 5px 0;">Speed: ${ship.sog !== 'N/A' ? `${ship.sog} knots` : 'N/A'}</p>
-                            <p style="margin: 5px 0;">Course: ${ship.cog !== 'N/A' ? `${ship.cog}°` : 'N/A'}</p>
-                        </div>
-                    `;
+                    <div style="padding: 10px;">
+                        <h4 style="margin: 0 0 5px 0;">${ship.flight}</h4>
+                        <p style="margin: 5px 0;">Type: ${ship.type || 'Unknown'}</p>
+                        <p style="margin: 5px 0;">Length: ${ship.length || 'N/A'} m</p>
+                        <p style="margin: 5px 0;">Width: ${ship.width || 'N/A'} m</p>
+                        <p style="margin: 5px 0;">Speed: ${ship.sog !== 'N/A' ? `${ship.sog} knots` : 'N/A'}</p>
+                    </div>
+                `;
                     marker.setPopupContent(popupContent);
                     marker.setLatLng([latitude, longitude]);
                     if (ship.cog) {

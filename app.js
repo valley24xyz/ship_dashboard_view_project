@@ -59,6 +59,27 @@ function subscribeToAIS(socket) {
     }
 }
 
+function getShipType(typeCode) {
+    if (typeCode >= 70 && typeCode <= 79) return 'Cargo';
+    if (typeCode >= 80 && typeCode <= 89) return 'Tanker';
+    if (typeCode >= 20 && typeCode <= 24) return 'WIG';
+    if (typeCode === 30) return 'Fishing';
+    if (typeCode >= 31 && typeCode <= 32) return 'Towing';
+    if (typeCode === 33) return 'Dredging';
+    if (typeCode === 34) return 'Diving';
+    if (typeCode === 35) return 'Military';
+    if (typeCode === 36) return 'Sailing';
+    if (typeCode === 37) return 'Pleasure';
+    if (typeCode >= 40 && typeCode <= 44) return 'HSC';
+    if (typeCode === 50) return 'Pilot';
+    if (typeCode === 51) return 'SAR';
+    if (typeCode === 52) return 'Tug';
+    if (typeCode === 55) return 'Police';
+    if (typeCode === 58) return 'Medical';
+    if (typeCode >= 60 && typeCode <= 64) return 'Passenger';
+    return 'Other';
+}
+
 // Function to handle AIS messages
 function handleAISMessage(event) {
     try {
@@ -69,7 +90,6 @@ function handleAISMessage(event) {
             const positionReport = aisMessage.Message.PositionReport;
             console.log('Raw Position Report:', positionReport);
             
-            // Log all available ship data
             console.log('MetaData:', aisMessage.MetaData);
             console.log('Position:', {
                 latitude: positionReport.Latitude,
@@ -86,7 +106,6 @@ function handleAISMessage(event) {
             const latitude = positionReport.Latitude;
             const longitude = positionReport.Longitude;
 
-            // Add debug log before checking bounding box
             console.log('About to check bounding box for:', {
                 shipName,
                 latitude,
@@ -103,14 +122,27 @@ function handleAISMessage(event) {
                     longitude,
                     cog: positionReport.Cog || 'N/A',
                     sog: positionReport.Sog || 'N/A',
+                    // Add these fields for the split-flap display
+                    city: shipCache[aisMessage.MetaData.MMSI]?.type || 'Loading...',  // This is used for the Type column
+                    gate: shipCache[aisMessage.MetaData.MMSI]?.type || 'Loading...',  // Backup field
+                    airline: "AIS",  // Required by split-flap but not displayed
+                    scheduled: "",   // Required by split-flap but not displayed
+                    status: (positionReport.Sog && positionReport.Sog > 0) ? "A" : "B",
+                    remarks: "",     // Required by split-flap but not displayed
+                    // Keep the rest of your fields
+                    length: shipCache[aisMessage.MetaData.MMSI]?.length || 'N/A',
+                    width: shipCache[aisMessage.MetaData.MMSI]?.width || 'N/A',
+                    type: shipCache[aisMessage.MetaData.MMSI]?.type || 'Loading...'
                 };
 
-                // Update shipsData array
                 const existingIndex = shipsData.findIndex(ship => ship.flight === shipName);
                 if (existingIndex !== -1) {
-                    shipsData[existingIndex] = shipData; // Update existing entry
+                    shipsData[existingIndex] = { 
+                        ...shipsData[existingIndex], 
+                        ...shipData 
+                    }; // Update while preserving existing data
                 } else {
-                    shipsData.push(shipData); // Add new entry
+                    shipsData.push(shipData);
                 }
 
                 console.log('Updated shipsData:', shipsData);
@@ -118,7 +150,35 @@ function handleAISMessage(event) {
                 console.log(`Ship ${shipName} is outside the bounding box.`);
             }
         } else if (aisMessage.MessageType === 'ShipStaticData') {
-            console.log('Received ship static data:', aisMessage.Message.ShipStaticData);
+            const staticData = aisMessage.Message.ShipStaticData;
+            const shipName = aisMessage.MetaData.ShipName?.trim();
+    
+            if (shipName) {
+                const typeCode = staticData.Type;
+                const dimension = staticData.Dimension;
+                const length = dimension ? (dimension.A + dimension.B) : 'N/A';
+                const width = dimension ? (dimension.C + dimension.D) : 'N/A';
+                
+                // Update cache
+                shipCache[aisMessage.MetaData.MMSI] = {
+                    ...shipCache[aisMessage.MetaData.MMSI],
+                    length: length,
+                    width: width,
+                    type: getShipType(typeCode)
+                };
+    
+                // Update existing ship in shipsData if it exists
+                const existingIndex = shipsData.findIndex(ship => ship.flight === shipName);
+                if (existingIndex !== -1) {
+                    shipsData[existingIndex] = {
+                        ...shipsData[existingIndex],
+                        length: length,
+                        width: width,
+                        type: getShipType(typeCode)
+                    };
+                }
+                console.log(`Updated static data for ${shipName}: Type=${getShipType(typeCode)}, Length=${length}, Width=${width}`);
+            }
         }
     } catch (error) {
         console.error('Error processing AIS message:', error);
