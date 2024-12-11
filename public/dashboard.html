@@ -257,42 +257,43 @@ input#sea:checked ~ .slider {
   console.log('SouthWest Latitude:', swLat);
   console.log('SouthWest Longitude:', swLng);
 
-  // Initialize the map
-  var map = L.map('map').setView([35.4, 13], 3); // Center and zoom level can be adjusted
-
-  // Add a dark mode tile layer
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-    maxZoom: 18
-  }).addTo(map);
-
-  // Check if all coordinates are available
-  if (neLat && neLng && swLat && swLng) {
-    // Create a bounding box using the coordinates
-    var bounds = [
-      [swLat, swLng], // Southwest corner
-      [neLat, neLng]  // Northeast corner
-    ];
-
-    // Add a rectangle to the map to show the bounding box
-    L.rectangle(bounds, { color: "#ff7800", weight: 1 }).addTo(map);
-
-    // Adjust the map view to fit the bounding box
-    map.fitBounds(bounds);
-  }
+  
+// Make these variables available globally for custom.js 
+window.boundingBox = { neLat, neLng, swLat, swLng };
 
   // Make these variables available globally for custom.js and app.js
   window.boundingBox = { neLat, neLng, swLat, swLng };
 
   function setBoundingBoxOnServer() {
     const { neLat, neLng, swLat, swLng } = window.boundingBox;
+    
+    if (!neLat || !neLng || !swLat || !swLng) {
+        console.error('Invalid bounding box coordinates');
+        return;
+    }
+
+    console.log('Setting bounding box with coordinates:', {
+        neLat, neLng, swLat, swLng
+    });
 
     // Send the bounding box to the server
-    const url = `/api/setBoundingBox?neLat=${neLat}&neLng=${neLng}&swLat=${swLat}&swLng=${swLng}`;
-    fetch(url)
+    fetch(`/api/setBoundingBox?neLat=${neLat}&neLng=${neLng}&swLat=${swLat}&swLng=${swLng}`)
         .then(response => response.json())
         .then(data => {
             if (data.success) {
                 console.log('Bounding box successfully updated on server:', data.boundingBox);
+                
+                // Wait a short moment before resubscribing
+                setTimeout(() => {
+                    fetch('/api/resubscribe')
+                        .then(resubResponse => resubResponse.json())
+                        .then(resubData => {
+                            console.log('Resubscription response:', resubData);
+                        })
+                        .catch(error => {
+                            console.error('Resubscription error:', error);
+                        });
+                }, 1000);
             } else {
                 console.error('Failed to update bounding box on server:', data.error);
             }
@@ -301,7 +302,6 @@ input#sea:checked ~ .slider {
             console.error('Error updating bounding box on server:', error);
         });
 }
-
 // Call this function after setting window.boundingBox
 setBoundingBoxOnServer();
 

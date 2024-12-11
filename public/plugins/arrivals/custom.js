@@ -1,3 +1,14 @@
+window.onerror = function(msg, url, lineNo, columnNo, error) {
+  console.error('Global error:', {
+      message: msg,
+      url: url,
+      lineNo: lineNo,
+      columnNo: columnNo,
+      error: error
+  });
+  return false;
+};
+
 sf.plugins.arrivals = {
   dataType: 'json',
 
@@ -12,7 +23,12 @@ sf.plugins.arrivals = {
 
 var map;
 // MAP
+// Define shipMarkers outside the event handler
+var shipMarkers = {};
+var shipData = {};
+
 document.addEventListener("DOMContentLoaded", function() {
+  console.log('DOM Content Loaded - Starting initialization');
 
     // Access the bounding box coordinates from the global `window.boundingBox`
     var boundingBox = window.boundingBox;
@@ -60,92 +76,105 @@ document.addEventListener("DOMContentLoaded", function() {
     boundingBox.bindPopup("Selected Tracking Area");
     map.fitBounds(bounds);  // Adjust the map to fit the bounding box
   }
-  // Store markers and ship data by ship name
-  const shipMarkers = {};
-  const shipData = {};
+
+  // Debug map initialization
+  console.log('Map container:', document.getElementById('map'));
+  console.log('Initial map object:', map);
 
   // Function to update the map with ship data
   function updateMap(shipsData) {
-    shipsData.forEach(function(ship) {
+    console.log('Starting map update with:', shipsData);
 
-        // Skip the ship if the name is undefined or null
+    console.log('Current working directory paths:', {
+        absolute: window.location.href,
+        relative: window.location.pathname,
+        iconPath: new URL('img/boat_top.png', window.location.href).href
+    });
+    
+    // First, log the map object to ensure it's available
+    console.log('Map object:', map);
+    
+    shipsData.forEach(function(ship) {
         if (!ship.flight) {
             console.warn('Skipping ship with undefined name:', ship);
-            return; // Skip this iteration and do not add this ship to the map
-          }
+            return;
+        }
+        
         const latitude = parseFloat(ship.latitude);
         const longitude = parseFloat(ship.longitude);
-
-        console.log(`Creating marker for ${ship.flight}, Latitude: ${latitude}, Longitude: ${longitude}`);
-
-        // Check if latitude and longitude are valid numbers
+        
         if (!isNaN(latitude) && !isNaN(longitude)) {
-            // Determine the icon based on ship length
-            let shipIconUrl = 'img/boat_top.png';  // Default icon
-            if (ship.length && parseFloat(ship.length) > 100) {
-                shipIconUrl = 'img/big_cargo.png';  // Use cargo ship icon if length > 100m
-            }
-
-            const shipIcon = L.icon({
-                iconUrl: shipIconUrl,
-                iconSize: [40, 40],
-                iconAnchor: [20, 20],
-                popupAnchor: [0, -16]
-            });
-
-            const markerOptions = { icon: shipIcon };
-
-            // If Course Over Ground (Cog) is available, use it to rotate the marker
-            if (ship.cog) {
-                markerOptions.rotationAngle = parseFloat(ship.cog);
-            }
-
-            // Check if the marker for the ship already exists
-            if (!shipMarkers[ship.flight]) {
-                console.log(`Creating new marker for ${ship.flight} at [${latitude}, ${longitude}]`);
-                const marker = L.marker([latitude, longitude], markerOptions).addTo(map);
-                shipMarkers[ship.flight] = marker;
-
-                const lengthText = ship.length && ship.length !== 'Loading...' ? `${ship.length}` : 'Loading...';
-                const widthText = ship.width && ship.width !== 'Loading...' ? `${ship.width}` : 'Loading...';
+            try {
+                // Log the actual marker creation attempt
+                console.log(`Attempting to create/update marker for ${ship.flight} at [${latitude}, ${longitude}]`);
                 
-                const popupContent = `<b>${ship.flight}</b>
-                  <br>Length (m): ${lengthText}
-                  <br>Width (m): ${widthText}
-                  <br>COG: ${ship.cog || 'N/A'}°
-                  <br>SOG: ${ship.sog || 'N/A'} knots
-                  <br>Type: ${ship.type || 'Unknown'}
-                `;
-                marker.bindPopup(popupContent);
-
-            } else {
-                console.log(`Updating marker for ${ship.flight} at [${latitude}, ${longitude}]`);
-                shipMarkers[ship.flight].setLatLng([latitude, longitude]);
-
-                // Update marker rotation if Cog is available
-                if (ship.cog) {
-                    shipMarkers[ship.flight].setRotationAngle(parseFloat(ship.cog));
+                // Test icon path
+                const iconPath = 'img/boat_top.png';
+                console.log(`Using icon from: ${iconPath}`);
+                
+                const shipIcon = L.icon({
+                    iconUrl: iconPath,
+                    iconSize: [40, 40],
+                    iconAnchor: [20, 20],
+                    popupAnchor: [0, -16]
+                });
+                
+                if (!shipMarkers[ship.flight]) {
+                    console.log(`Creating new L.marker for ${ship.flight}`);
+                    const marker = new L.Marker([latitude, longitude]);
+                    
+                    // Create popup content
+                    const popupContent = `
+                        <div style="padding: 10px;">
+                            <h4 style="margin: 0 0 5px 0;">${ship.flight}</h4>
+                            <p style="margin: 5px 0;">Speed: ${ship.sog !== 'N/A' ? `${ship.sog} knots` : 'N/A'}</p>
+                            <p style="margin: 5px 0;">Course: ${ship.cog !== 'N/A' ? `${ship.cog}°` : 'N/A'}</p>
+                        </div>
+                    `;
+                    
+                    // Bind popup before adding to map
+                    marker.bindPopup(popupContent);
+                    
+                    // Add hover listeners
+                    marker.on('mouseover', function(e) {
+                        console.log('Mouse over ship:', ship.flight); // Debug log
+                        this.openPopup();
+                    });
+                    
+                    marker.on('mouseout', function(e) {
+                        console.log('Mouse out ship:', ship.flight); // Debug log
+                        this.closePopup();
+                    });
+                    
+                    // Set icon and add to map
+                    marker.setIcon(shipIcon);
+                    marker.addTo(map);
+                    
+                    if (ship.cog) {
+                        marker.setRotationAngle(parseFloat(ship.cog));
+                    }
+                    
+                    shipMarkers[ship.flight] = marker;
+                } else {
+                    const marker = shipMarkers[ship.flight];
+                    const popupContent = `
+                        <div style="padding: 10px;">
+                            <h4 style="margin: 0 0 5px 0;">${ship.flight}</h4>
+                            <p style="margin: 5px 0;">Speed: ${ship.sog !== 'N/A' ? `${ship.sog} knots` : 'N/A'}</p>
+                            <p style="margin: 5px 0;">Course: ${ship.cog !== 'N/A' ? `${ship.cog}°` : 'N/A'}</p>
+                        </div>
+                    `;
+                    marker.setPopupContent(popupContent);
+                    marker.setLatLng([latitude, longitude]);
+                    if (ship.cog) {
+                        marker.setRotationAngle(parseFloat(ship.cog));
+                    }
                 }
-
-                // Update popup content
-                const popupContent = `
-                    <b>${ship.flight}</b><br>
-                    Length: ${ship.length || 'N/A'} m<br>
-                    Width: ${ship.width || 'N/A'} m<br>
-                    Type: ${ship.type || 'Unknown'}<br>
-                `;                
-                shipMarkers[ship.flight].setPopupContent(popupContent);
+            } catch (error) {
+                console.error(`Error handling ship ${ship.flight}:`, error);
             }
-
-            // Optional hover behavior to show popup
-            shipMarkers[ship.flight].on('mouseover', function () {
-                this.openPopup();
-            });
-            shipMarkers[ship.flight].on('mouseout', function () {
-                this.closePopup();
-            });
         } else {
-            console.error(`Invalid latitude or longitude for ship ${ship.flight}: Latitude: ${latitude}, Longitude: ${longitude}`);
+            console.error(`Invalid coordinates for ${ship.flight}: [${latitude}, ${longitude}]`);
         }
     });
 }
@@ -153,17 +182,25 @@ document.addEventListener("DOMContentLoaded", function() {
 
   // Fetch and update ship data
   function fetchShipData() {
+    console.log('Attempting to fetch ship data');
     $.getJSON('/api/arrivals', function(response) {
-      if (response && response.data) {
-        console.log('Fetched shipsData:', response.data); // Log the entire response
-        updateMap(response.data);
-      } else {
-        console.error('No data received from API');
-      }
+        console.log('Received API response:', response);
+        if (response && response.data) {
+            console.log('Found data in response:', response.data);
+            const ships = Array.isArray(response.data) ? response.data : [response.data];
+            console.log('About to process ships:', ships);
+            updateMap(ships);
+        } else {
+            console.error('No data property in response:', response);
+        }
     }).fail(function(jqXHR, textStatus, errorThrown) {
-      console.error('Failed to load data from API:', textStatus, errorThrown);
+        console.error('API request failed:', {
+            status: jqXHR.status,
+            textStatus: textStatus,
+            error: errorThrown
+        });
     });
-  }
+}
 
   // Fetch the ship data initially
   fetchShipData();
@@ -175,7 +212,7 @@ document.addEventListener("DOMContentLoaded", function() {
 //=============================================================
 // TOGGLE LOGIC
 //=============================================================
-
+/*
 var showingPlanes = false; // Track whether planes or ships are being shown
 
 function toggleDashboard() {

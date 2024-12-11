@@ -6,14 +6,10 @@ const port = process.env.PORT || 8080;
 // Store ships currently in the bounding box
 let shipsData = [];
 let shipCache = {}; // Cache to store ship data
+let socket = null; // Initialize socket as null
+let boundingBox = null; // Set initially to null
 
 app.use('/', express.static('public'));
-
-// WebSocket setup to connect to AISStream API
-let socket = new WebSocket('wss://stream.aisstream.io/v0/stream');
-
-// Default bounding box coordinates
-let boundingBox = null; // Set initially to null
 
 // Helper function to check if a ship's position is within the bounding box
 function isWithinBoundingBox(lat, lng) {
@@ -22,23 +18,29 @@ function isWithinBoundingBox(lat, lng) {
         return false;
     }
 
-    const withinBox = (
-        lat <= boundingBox.nw.lat &&
-        lat >= boundingBox.se.lat &&
-        lng >= boundingBox.nw.lng &&
-        lng <= boundingBox.se.lng
-    );
-    console.log(`Checking position (${lat}, ${lng}) against bounding box.`);
-    console.log(`Bounding Box NW: ${boundingBox.nw.lat}, ${boundingBox.nw.lng}`);
-    console.log(`Bounding Box SE: ${boundingBox.se.lat}, ${boundingBox.se.lng}`);
-    console.log(`Within bounding box: ${withinBox}`);
+    const latCheck = (lat <= boundingBox.nw.lat && lat >= boundingBox.se.lat);
+    const lngCheck = (lng >= boundingBox.nw.lng && lng <= boundingBox.se.lng);
+
+    console.log('Coordinate checks:');
+    console.log(`Latitude (${lat}): ${boundingBox.nw.lat} >= lat >= ${boundingBox.se.lat} : ${latCheck}`);
+    console.log(`Longitude (${lng}): ${boundingBox.nw.lng} <= lng <= ${boundingBox.se.lng} : ${lngCheck}`);
+
+    const withinBox = latCheck && lngCheck;
+    console.log(`Final result - Within bounding box: ${withinBox}`);
+    
     return withinBox;
 }
 
+
 // Function to subscribe to AISStream with the current bounding box
 function subscribeToAIS(socket) {
-    if (!boundingBox) {
-        console.error("Cannot subscribe to AIS: Bounding box is not set.");
+    if (!boundingBox || !socket) {
+        console.error("Cannot subscribe to AIS: Bounding box not set or socket not connected");
+        return;
+    }
+
+    if (socket.readyState !== WebSocket.OPEN) {
+        console.error("Cannot subscribe to AIS: WebSocket not open");
         return;
     }
 
@@ -49,17 +51,31 @@ function subscribeToAIS(socket) {
     };
 
     console.log("Subscribing to AIS with message:", JSON.stringify(subscriptionMessage, null, 2));
-    socket.send(JSON.stringify(subscriptionMessage));
+    try {
+        socket.send(JSON.stringify(subscriptionMessage));
+        console.log("Subscription message sent successfully");
+    } catch (error) {
+        console.error("Error sending subscription message:", error);
+    }
 }
 
 // Function to handle AIS messages
 function handleAISMessage(event) {
     try {
         const aisMessage = JSON.parse(event.data);
-        console.log('Received AIS Message:', aisMessage);
-
+        console.log('Message Type:', aisMessage.MessageType);
+        
         if (aisMessage.MessageType === 'PositionReport') {
             const positionReport = aisMessage.Message.PositionReport;
+            console.log('Raw Position Report:', positionReport);
+            
+            // Log all available ship data
+            console.log('MetaData:', aisMessage.MetaData);
+            console.log('Position:', {
+                latitude: positionReport.Latitude,
+                longitude: positionReport.Longitude
+            });
+
             const shipName = aisMessage.MetaData.ShipName?.trim();
 
             if (!shipName) {
@@ -70,7 +86,13 @@ function handleAISMessage(event) {
             const latitude = positionReport.Latitude;
             const longitude = positionReport.Longitude;
 
-            console.log(`Ship: ${shipName}, Position: (${latitude}, ${longitude})`);
+            // Add debug log before checking bounding box
+            console.log('About to check bounding box for:', {
+                shipName,
+                latitude,
+                longitude,
+                boundingBox
+            });
 
             if (isWithinBoundingBox(latitude, longitude)) {
                 console.log(`Ship ${shipName} is within the bounding box.`);
@@ -95,48 +117,52 @@ function handleAISMessage(event) {
             } else {
                 console.log(`Ship ${shipName} is outside the bounding box.`);
             }
+        } else if (aisMessage.MessageType === 'ShipStaticData') {
+            console.log('Received ship static data:', aisMessage.Message.ShipStaticData);
         }
     } catch (error) {
         console.error('Error processing AIS message:', error);
     }
 }
 
-// WebSocket event handlers
-socket.onopen = () => {
-    console.log('WebSocket connection opened.');
-    subscribeToAIS(socket); // Subscribe when the WebSocket opens
-};
+function initializeWebSocket() {
+    socket = new WebSocket('wss://stream.aisstream.io/v0/stream');
 
-socket.onmessage = (event) => {
-    console.log("Raw AIS Message:", event.data); // Log raw message from the server
-    handleAISMessage(event);
-};
+    socket.onopen = () => {
+        console.log('WebSocket connection opened.');
+        if (boundingBox) {
+            subscribeToAIS(socket);
+        }
+    };
 
-socket.onclose = (event) => {
-    console.log('WebSocket connection closed:', event.code, event.reason);
+    socket.onmessage = (event) => {
+        console.log("Raw AIS Message:", event.data);
+        const message = JSON.parse(event.data);
+        if (message.MessageType === 'SubscriptionSuccess') {
+            console.log('Successfully subscribed to AIS feed');
+        } else if (message.MessageType === 'SubscriptionFailed') {
+            console.error('Failed to subscribe to AIS feed:', message);
+        }
+        handleAISMessage(event);
+    };
 
-    // Attempt to reconnect
-    setTimeout(() => {
-        console.log('Reconnecting WebSocket...');
-        socket = new WebSocket('wss://stream.aisstream.io/v0/stream');
-        socket.onopen = () => {
-            console.log('WebSocket reconnected.');
-            subscribeToAIS(socket); // Re-subscribe with the current bounding box
-        };
-        socket.onmessage = (event) => {
-            console.log("Raw AIS Message (after reconnect):", event.data);
-            handleAISMessage(event);
-        };
-    }, 5000); // Reconnect after 5 seconds
-};
+    socket.onclose = (event) => {
+        console.log('WebSocket connection closed:', event.code, event.reason);
+        setTimeout(initializeWebSocket, 5000);
+    };
 
-socket.onerror = (error) => {
-    console.error("WebSocket error:", error);
-};
+    socket.onerror = (error) => {
+        console.error("WebSocket error:", error);
+    };
+}
+
+// Initialize the WebSocket when the server starts
+initializeWebSocket();
+
 
 // API route to serve AIS data directly
 app.get('/api/arrivals', (req, res) => {
-    console.log('Sending shipsData:', shipsData);
+    console.log('Sending shipsData:', JSON.stringify(shipsData, null, 2));
     res.json({ data: shipsData });
 });
 
@@ -155,6 +181,20 @@ app.get('/api/setBoundingBox', (req, res) => {
     // Re-subscribe to AIS with the corrected bounding box
     subscribeToAIS(socket);
     res.json({ success: true, boundingBox });
+});
+
+// Add this to your existing app.js routes
+app.get('/api/resubscribe', (req, res) => {
+    try {
+        if (boundingBox) {
+            subscribeToAIS(socket);
+            res.json({ success: true, message: 'Resubscribed to AIS' });
+        } else {
+            res.status(400).json({ success: false, message: 'Bounding box not set' });
+        }
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.toString() });
+    }
 });
 
 // Start the server
