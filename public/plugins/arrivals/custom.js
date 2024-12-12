@@ -108,10 +108,15 @@ document.addEventListener("DOMContentLoaded", function() {
                 // Log the actual marker creation attempt
                 console.log(`Attempting to create/update marker for ${ship.flight} at [${latitude}, ${longitude}]`);
                 
-                // Test icon path
-                const iconPath = 'img/boat_top.png';
-                console.log(`Using icon from: ${iconPath}`);
-                
+                // Determine icon based on ship length
+                let iconPath = 'img/boat_top.png'; // Default icon
+                if (ship.length && parseFloat(ship.length) > 100) {
+                    iconPath = 'img/big_cargo.png'; // Icon for large ships
+                    console.log(`Using large ship icon for ${ship.flight} with length ${ship.length}`);
+                } else {
+                    console.log(`Using default icon for ${ship.flight} with length ${ship.length}`);
+                }
+
                 const shipIcon = L.icon({
                     iconUrl: iconPath,
                     iconSize: [40, 40],
