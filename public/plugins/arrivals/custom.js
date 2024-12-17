@@ -36,6 +36,7 @@ document.addEventListener("DOMContentLoaded", function() {
     var neLng = boundingBox ? parseFloat(boundingBox.neLng) : null;
     var swLat = boundingBox ? parseFloat(boundingBox.swLat) : null;
     var swLng = boundingBox ? parseFloat(boundingBox.swLng) : null;
+    var zoom = boundingBox ? parseInt(boundingBox.zoom) : 3;  // Get zoom from URL params
 
     // Calculate the center of the bounding box
     var centerLat = (neLat + swLat) / 2;
@@ -43,10 +44,10 @@ document.addEventListener("DOMContentLoaded", function() {
 
   // Initialize the map
  map = L.map('map', {
-    center: [centerLat, centerLng],  // Center the map using the midpoint
-    zoom: 13,
-    zoomControl: false,  // Disable the default zoom controls
-    attributionControl: false  // Disable the attribution control
+    center: [centerLat, centerLng],
+    zoom: zoom,  // Use the zoom level from the URL
+    zoomControl: false,
+    attributionControl: false
 
   });
   // Set up the dark mode map tiles
@@ -58,23 +59,13 @@ document.addEventListener("DOMContentLoaded", function() {
   // Add the dark mode tile layer to the map
   darkTileLayer.addTo(map);
 
-      // Draw the yellow bounding box
-   // const bounds = [[37.865543, -122.503163], [37.813665, -122.437426]];  // Upper left and lower right coordinates
-   // const boundingBox = L.rectangle(bounds, { color: "#FFFF00", weight: 2 }).addTo(map);  // Yellow box with stroke weight of 2
-
-   // boundingBox.bindPopup("Tracking Area");
-
-      // Draw the blue bounding box
-   // const blueBounds = [[37.856164, -122.591074], [37.748038, -122.403054]];  // Upper left and lower right coordinates for blue box
-   // const blueBoundingBox = L.rectangle(blueBounds, { color: "#0000FF", weight: 2 }).addTo(map);  // Blue box
-   // blueBoundingBox.bindPopup("Blue Tracking Area");
-
-  // If bounding box coordinates are available, draw the bounding box on the map
+  // Set the exact bounds from the index page
   if (neLat && neLng && swLat && swLng) {
-    const bounds = [[swLat, swLng], [neLat, neLng]];
-    const boundingBox = L.rectangle(bounds, { color: "#FFFF00", weight: 2 }).addTo(map);
-    boundingBox.bindPopup("Selected Tracking Area");
-    map.fitBounds(bounds);  // Adjust the map to fit the bounding box
+    const bounds = L.latLngBounds(
+      [swLat, swLng],
+      [neLat, neLng]
+    );
+    map.fitBounds(bounds);
   }
 
   // Debug map initialization

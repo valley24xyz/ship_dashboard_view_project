@@ -1,152 +1,173 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Incoming Ships</title>
-    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <link rel="icon" type="image/x-icon" href="favicon.ico" />
     <link rel="stylesheet" href="css/base.css" />
 
     <!-- MAP -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"
+    />
     <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
     <script src="https://rawgit.com/bbecquet/Leaflet.RotatedMarker/master/leaflet.rotatedMarker.js"></script>
     <!--ESRI LEAFLET PLUGIN-->
     <script src="https://unpkg.com/esri-leaflet"></script>
     <style>
-      html, body {
-          display: grid;
-          place-items: center;
+      html,
+      body {
+        display: grid;
+        place-items: center;
+        margin: 0;
+        padding: 20px;
+        min-height: 100vh;
+        background-color: black;
       }
+
+      .dashboard-container {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+        max-width: 1200px;
+        width: 100%;
+        flex-wrap: wrap;
+      }
+
+      #map {
+        width: min(540px, 90vw);
+        height: min(540px, 90vw);
+        background: black;
+      }
+
+      #board {
+        transform: scale(0.5);
+        transform-origin: top left;
+        margin-left: 50px;
+      }
+
+      /* Mobile Layout */
+      @media (max-width: 1100px) {
+        .dashboard-container {
+          flex-direction: column;
+          align-items: center;
+          grid-template-columns: 1fc;
+        }
+
+        #board {
+          transform: scale(0.4);
+          margin-left: 0;
+          margin-top: -100px; /* Adjust this value as needed to reduce gap */
+        }
+      }
+
       .dashboard-header {
-  display: flex;
-  justify-content: left;  /* Align items on both sides */
-  align-items: center;             /* Vertically align items */
-  width: 100%;                     /* Ensure full width */
-  margin-bottom: 10px;             /* Add some spacing below the headers */
-}
+        display: flex;
+        justify-content: left; /* Align items on both sides */
+        align-items: center; /* Vertically align items */
+        width: 100%; /* Ensure full width */
+        margin-bottom: 10px; /* Add some spacing below the headers */
+      }
 
-.header {
-  font-size: 18px;
-  font-weight: bold;
-}
+      .header {
+        font-size: 18px;
+        font-weight: bold;
+      }
 
-.toggle-container {
-  display: flex;
-  margin-bottom: 8px;
-  align-items: center;
-  justify-content: flex-end;       /* Align the toggle to the right */
-  width: 200px;                    /* Adjust as necessary for alignment */
-}
+      .toggle-container {
+        display: flex;
+        margin-bottom: 8px;
+        align-items: center;
+        justify-content: flex-end; /* Align the toggle to the right */
+        width: 200px; /* Adjust as necessary for alignment */
+      }
 
-.toggle-switch {
-  position: relative;
-  display: inline-block;
-  width: 120px;
-  height: 40px;
-  background-color: #f1f1f1;
-  border-radius: 25px;
-  box-shadow: inset 0 0 5px rgba(0,0,0,0.2);
-}
+      .toggle-switch {
+        position: relative;
+        display: inline-block;
+        width: 120px;
+        height: 40px;
+        background-color: #f1f1f1;
+        border-radius: 25px;
+        box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.2);
+      }
 
-.toggle-switch input {
-  display: none;
-}
+      .toggle-switch input {
+        display: none;
+      }
 
-.toggle-switch .labels {
-  display: flex;
-  justify-content: space-between;
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 1;  /* This ensures the text is on top */
-}
+      .toggle-switch .labels {
+        display: flex;
+        justify-content: space-between;
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 1; /* This ensures the text is on top */
+      }
 
-.toggle-switch .labels label {
-  flex: 1;
-  line-height: 40px;
-  text-align: center;
-  font-weight: bold;
-  cursor: pointer;
-  color: #666;
-}
+      .toggle-switch .labels label {
+        flex: 1;
+        line-height: 40px;
+        text-align: center;
+        font-weight: bold;
+        cursor: pointer;
+        color: #666;
+      }
 
-.toggle-switch input#air:checked ~ .labels label[for="air"],
-.toggle-switch input#sea:checked ~ .labels label[for="sea"] {
-  color: white;
-}
+      .toggle-switch input#air:checked ~ .labels label[for="air"],
+      .toggle-switch input#sea:checked ~ .labels label[for="sea"] {
+        color: white;
+      }
 
-.toggle-switch .slider {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 50%;
-  height: 100%;
-  background-color: #333;
-  border-radius: 25px;
-  transition: 0.3s;
-  z-index: 0;  /* Slider behind the text */
-}
+      .toggle-switch .slider {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 50%;
+        height: 100%;
+        background-color: #333;
+        border-radius: 25px;
+        transition: 0.3s;
+        z-index: 0; /* Slider behind the text */
+      }
 
-input#sea:checked ~ .slider {
-  left: 50%;
-}
-
-
-  </style>
-
-</head>
-<body>
-  <!-- Add a div to hold the map -->
-  <div id="map" style="width: 1350px; height: 600px; margin-top: 75px"></div>
-<!-- ============================================ -->
-<!-- TOGGLE -->
-<!-- ============================================ -->
-
-<!-- ============================================ -->
-    <!-- ============================================ -->
-    <!-- ROW TEMPLATE -->
-     <!-- Add a container for the split-flap board -->
-     <div id="board" class="chartContainer splitflap" style="margin-left:50px">
-      <div class="dashboard-header">
-        <div class="header" style="width: 780px; text-align: left">Vessel Name</div>
-        <div class="header" style="width: 380px; text-align: left">Type</div>
-      
-        <!-- toggle switch  -->
-        <!--
-       <div class="toggle-container">
-          <div class="toggle-switch">
-            <input type="radio" id="air" name="toggle" checked onchange="toggleDashboard()">
-            <input type="radio" id="sea" name="toggle" onchange="toggleDashboard()">
-
-            <div class="labels">
-              <label for="air">Air</label>
-              <label for="sea">Sea</label>
+      input#sea:checked ~ .slider {
+        left: 50%;
+      }
+    </style>
+  </head>
+  <body>
+    <h1 style="color: white; text-align: center; font-size: 24px; margin-bottom: 20px;">Incoming Ships</h1>
+    <div class="dashboard-container">
+      <div id="map"></div>
+      <div
+        id="board"
+        class="chartContainer splitflap"
+        style="margin-left: 50px"
+      >
+        <div class="dashboard-header">
+          <div class="header" style="width: 780px; text-align: left">
+            Vessel Name
           </div>
-
-    <span class="slider"></span>
-  </div>
-
+          <div class="header" style="width: 380px; text-align: left">Type</div>
         </div>
-      
+        <!-- Rest of your board content... -->
       </div>
-      
-    END CONTAINER -->
+    </div>
+    <!-- ============================================ -->
+    <!-- TOGGLE -->
+    <!-- ============================================ -->
+
+    <!-- ============================================ -->
     <!-- ============================================ -->
     <!-- ROW TEMPLATE -->
     <script type="text/template" id="row_template">
       <div class="row">
         <div class="group flight"> <!-- ship number -->
-          <div class="character"><span></span></div>
-          <div class="character"><span></span></div>
-          <div class="character"><span></span></div>
-          <div class="character"><span></span></div>
-          <div class="character"><span></span></div>
-          <div class="character"><span></span></div>
-          <div class="character"><span></span></div>
-          <div class="character"><span></span></div>
           <div class="character"><span></span></div>
           <div class="character"><span></span></div>
           <div class="character"><span></span></div>
@@ -216,95 +237,107 @@ input#sea:checked ~ .slider {
       // CUSTOMIZATION OPTIONS
       sf.options = {
         // REQUIRED
-        plugin: 'arrivals', // Plugin to load
-        container: $('#board'), // Where in the DOM to put the board
-        template: $('#row_template'), // Where in the DOM to find the row template
+        plugin: "arrivals", // Plugin to load
+        container: $("#board"), // Where in the DOM to put the board
+        template: $("#row_template"), // Where in the DOM to find the row template
         numRows: 12, // number of rows
 
         // OPTIONAL
-//        sort: 'gate', // the column to sort by
-//        order: 'asc', // the order to sort by
+        //        sort: 'gate', // the column to sort by
+        //        order: 'asc', // the order to sort by
         maxResults: 12, // number of items to retrieve from service
         pageInterval: 5000, // delay between pages (ms)
-        stagger: 1000 // delay between loading rows (ms)
+        stagger: 1000, // delay between loading rows (ms)
       };
 
-      $(document).ready(function() {
+      $(document).ready(function () {
         sf.board.init(sf.options);
         sf.items.init(sf.options);
         sf.items.load(sf.options);
       });
       function getQueryParams() {
-    var params = {};
-    var queryString = window.location.search.slice(1);
-    queryString.split('&').forEach(function (param) {
-      var [key, value] = param.split('=');
-      params[key] = decodeURIComponent(value);
-    });
-    return params;
-  }
-
-  // Use the query parameters and make them global
-  var params = getQueryParams();
-  var neLat = params.neLat;
-  var neLng = params.neLng;
-  var swLat = params.swLat;
-  var swLng = params.swLng;
-
-  // Log the parameters for debugging
-  console.log('NorthEast Latitude:', neLat);
-  console.log('NorthEast Longitude:', neLng);
-  console.log('SouthWest Latitude:', swLat);
-  console.log('SouthWest Longitude:', swLng);
-
-
-// Make these variables available globally for custom.js 
-window.boundingBox = { neLat, neLng, swLat, swLng };
-
-  // Make these variables available globally for custom.js and app.js
-  window.boundingBox = { neLat, neLng, swLat, swLng };
-
-  function setBoundingBoxOnServer() {
-    const { neLat, neLng, swLat, swLng } = window.boundingBox;
-    
-    if (!neLat || !neLng || !swLat || !swLng) {
-        console.error('Invalid bounding box coordinates');
-        return;
-    }
-
-    console.log('Setting bounding box with coordinates:', {
-        neLat, neLng, swLat, swLng
-    });
-
-    // Send the bounding box to the server
-    fetch(`/api/setBoundingBox?neLat=${neLat}&neLng=${neLng}&swLat=${swLat}&swLng=${swLng}`)
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                console.log('Bounding box successfully updated on server:', data.boundingBox);
-                
-                // Wait a short moment before resubscribing
-                setTimeout(() => {
-                    fetch('/api/resubscribe')
-                        .then(resubResponse => resubResponse.json())
-                        .then(resubData => {
-                            console.log('Resubscription response:', resubData);
-                        })
-                        .catch(error => {
-                            console.error('Resubscription error:', error);
-                        });
-                }, 1000);
-            } else {
-                console.error('Failed to update bounding box on server:', data.error);
-            }
-        })
-        .catch(error => {
-            console.error('Error updating bounding box on server:', error);
+        var params = {};
+        var queryString = window.location.search.slice(1);
+        queryString.split("&").forEach(function (param) {
+          var [key, value] = param.split("=");
+          params[key] = decodeURIComponent(value);
         });
-}
-// Call this function after setting window.boundingBox
-setBoundingBoxOnServer();
+        return params;
+      }
 
-  </script>
+      // Use the query parameters and make them global
+      var params = getQueryParams();
+      var neLat = params.neLat;
+      var neLng = params.neLng;
+      var swLat = params.swLat;
+      var swLng = params.swLng;
+      var zoom = params.zoom;
+
+      // Log the parameters for debugging
+      console.log("NorthEast Latitude:", neLat);
+      console.log("NorthEast Longitude:", neLng);
+      console.log("SouthWest Latitude:", swLat);
+      console.log("SouthWest Longitude:", swLng);
+      console.log("Zoom Level:", zoom);
+
+      // Make these variables available globally for custom.js
+      window.boundingBox = { neLat, neLng, swLat, swLng, zoom };
+
+      // Make these variables available globally for custom.js and app.js
+      window.boundingBox = { neLat, neLng, swLat, swLng, zoom };
+
+      function setBoundingBoxOnServer() {
+        const { neLat, neLng, swLat, swLng, zoom } = window.boundingBox;
+
+        if (!neLat || !neLng || !swLat || !swLng || !zoom) {
+          console.error("Invalid bounding box coordinates");
+          return;
+        }
+
+        console.log("Setting bounding box with coordinates:", {
+          neLat,
+          neLng,
+          swLat,
+          swLng,
+          zoom,
+        });
+
+        // Send the bounding box to the server
+        fetch(
+          `/api/setBoundingBox?neLat=${neLat}&neLng=${neLng}&swLat=${swLat}&swLng=${swLng}&zoom=${zoom}`
+        )
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.success) {
+              console.log(
+                "Bounding box successfully updated on server:",
+                data.boundingBox
+              );
+
+              // Wait a short moment before resubscribing
+              setTimeout(() => {
+                fetch("/api/resubscribe")
+                  .then((resubResponse) => resubResponse.json())
+                  .then((resubData) => {
+                    console.log("Resubscription response:", resubData);
+                  })
+                  .catch((error) => {
+                    console.error("Resubscription error:", error);
+                  });
+              }, 1000);
+            } else {
+              console.error(
+                "Failed to update bounding box on server:",
+                data.error
+              );
+            }
+          })
+          .catch((error) => {
+            console.error("Error updating bounding box on server:", error);
+          });
+      }
+      // Call this function after setting window.boundingBox
+      setBoundingBoxOnServer();
+    </script>
   </body>
 </html>

@@ -11,42 +11,64 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
   
-  <!-- Leaflet Draw CSS and JS -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
-  
   <script src="https://rawgit.com/bbecquet/Leaflet.RotatedMarker/master/leaflet.rotatedMarker.js"></script>
   <!-- ESRI Leaflet Plugin -->
   <script src="https://unpkg.com/esri-leaflet"></script>
   
   <style>
     html, body {
-      display: grid;
       place-items: center;
       background-color: black;
       margin: 0;
       font-family: Arial, sans-serif;
+      height: 100vh;
+      width: 100vw;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      gap: 30px;
+      justify-content: center;
+      align-items: center;
     }
     #map {
-      width: 1800px;
-      height: 1000px;
-      margin-top: 75px;
+      width: min(540px, 90vw);
+      height: min(540px, 90vw);
+      margin: 0;
       background-color: black;
+    }
+    #goToDashboard {
+      bottom: 20px;
+      padding: 10px 20px;
+      font-size: 16px;
+      background-color: #333;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+      z-index: 1000;
+    }
+    h1 {
+      top: 20px;
+      color: white;
+      z-index: 1000;
+      margin: 0;
+      text-align: center;
     }
   </style>
 </head>
 <body>
   <!-- Map Container -->
-  <h1 style="color: white;">Click and drag to select an area.</h1>
+  <h1>Pan and zoom to select your area of interest.</h1>
   <div id="map"></div>
-<!-- Add this button below the map -->
-<button id="goToDashboard" style="margin-top: 20px;">View Dashboard</button>
+  <!-- Add this button below the map -->
+  <button id="goToDashboard">View Dashboard</button>
 
   <!-- Custom JS for Map Setup -->
   <script>
     var map = L.map('map', {
-      center: [35.4, 13],
-      zoom: 3,
+      center: [39.8283, -98.5795],
+      zoom: 3.4,
       attributionControl: false
     });
   
@@ -54,53 +76,22 @@
       maxZoom: 18
     }).addTo(map);
   
-    var drawnItems = new L.FeatureGroup();
-    map.addLayer(drawnItems);
-  
-    var drawControl = new L.Control.Draw({
-      draw: {
-        rectangle: true,
-        polygon: false,
-        polyline: false,
-        circle: false,
-        circlemarker: false,
-        marker: false
-      },
-      edit: false
-    });
-    map.addControl(drawControl);
-  
-    var bounds = null; // Variable to store the rectangle bounds
-  
-    map.on(L.Draw.Event.CREATED, function (e) {
-      var layer = e.layer;
-      drawnItems.addLayer(layer);
-  
-      if (e.layerType === 'rectangle') {
-        bounds = layer.getBounds();
-        var northEast = bounds.getNorthEast();
-        var southWest = bounds.getSouthWest();
-  
-        console.log('NorthEast:', northEast.lat, northEast.lng);
-        console.log('SouthWest:', southWest.lat, southWest.lng);
-      }
-    });
-  
     // Add event listener to the button
     document.getElementById('goToDashboard').addEventListener('click', function () {
-      if (bounds) {
-        // Get the coordinates from the bounds
-        var northEast = bounds.getNorthEast();
-        var southWest = bounds.getSouthWest();
-  
-        // Construct the URL with query parameters
-        var url = `dashboard.html?neLat=${northEast.lat}&neLng=${northEast.lng}&swLat=${southWest.lat}&swLng=${southWest.lng}`;
-        
-        // Redirect to dashboard.html with the coordinates
-        window.location.href = url;
-      } else {
-        alert('Please draw a rectangle first to select an area.');
-      }
+      // Get the current map bounds
+      var bounds = map.getBounds();
+      var zoom = map.getZoom();  // Get current zoom level
+      
+      var center = bounds.getCenter();
+      
+      var northEast = bounds.getNorthEast();
+      var southWest = bounds.getSouthWest();
+      
+      // Construct the URL with query parameters, including zoom
+      var url = `dashboard.html?neLat=${northEast.lat}&neLng=${northEast.lng}&swLat=${southWest.lat}&swLng=${southWest.lng}&zoom=${zoom}`;
+      
+      // Redirect to dashboard.html with the coordinates
+      window.location.href = url;
     });
     
   </script>
