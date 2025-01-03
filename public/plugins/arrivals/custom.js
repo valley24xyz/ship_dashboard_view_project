@@ -225,7 +225,7 @@ document.addEventListener("DOMContentLoaded", function() {
   fetchShipData();
 
   // Optionally set an interval to refresh the data periodically
-  setInterval(fetchShipData, 1000); // Refresh every 5 seconds
+  setInterval(fetchShipData, 5000); // Refresh every 5 seconds
 });
 
 //=============================================================
