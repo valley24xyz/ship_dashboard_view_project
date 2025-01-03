@@ -92,17 +92,10 @@ document.addEventListener("DOMContentLoaded", function() {
 
   // Function to update the map with ship data
   function updateMap(shipsData) {
-    clearAllMarkers();
     console.log('Starting map update with:', shipsData);
-
-    console.log('Current working directory paths:', {
-        absolute: window.location.href,
-        relative: window.location.pathname,
-        iconPath: new URL('img/boat_top.png', window.location.href).href
-    });
     
-    // First, log the map object to ensure it's available
-    console.log('Map object:', map);
+    // Track which ships are still active
+    const activeShips = new Set();
     
     shipsData.forEach(function(ship) {
         if (!ship.flight) {
@@ -113,18 +106,14 @@ document.addEventListener("DOMContentLoaded", function() {
         const latitude = parseFloat(ship.latitude);
         const longitude = parseFloat(ship.longitude);
         
+        activeShips.add(ship.flight);
+        
         if (!isNaN(latitude) && !isNaN(longitude)) {
             try {
-                // Log the actual marker creation attempt
-                console.log(`Attempting to create/update marker for ${ship.flight} at [${latitude}, ${longitude}]`);
-                
                 // Determine icon based on ship length
-                let iconPath = 'img/boat_top.png'; // Default icon
+                let iconPath = 'img/boat_top.png';
                 if (ship.length && parseFloat(ship.length) > 100) {
-                    iconPath = 'img/big_cargo.png'; // Icon for large ships
-                    console.log(`Using large ship icon for ${ship.flight} with length ${ship.length}`);
-                } else {
-                    console.log(`Using default icon for ${ship.flight} with length ${ship.length}`);
+                    iconPath = 'img/big_cargo.png';
                 }
 
                 const shipIcon = L.icon({
@@ -135,67 +124,51 @@ document.addEventListener("DOMContentLoaded", function() {
                 });
                 
                 if (!shipMarkers[ship.flight]) {
-                    console.log(`Creating new L.marker for ${ship.flight}`);
-                    const marker = new L.Marker([latitude, longitude]);
-                    
-                    // Create popup content
-                    const popupContent = `
-                    <div style="padding: 10px;">
-                        <h4 style="margin: 0 0 5px 0;">${ship.flight}</h4>
-                        <p style="margin: 5px 0;">Type: ${ship.type || 'Unknown'}</p>
-                        <p style="margin: 5px 0;">Length: ${ship.length || 'N/A'} m</p>
-                        <p style="margin: 5px 0;">Width: ${ship.width || 'N/A'} m</p>
-                        <p style="margin: 5px 0;">Speed: ${ship.sog !== 'N/A' ? `${ship.sog} knots` : 'N/A'}</p>
-                    </div>
-                `;
-                    
-                    // Bind popup before adding to map
-                    marker.bindPopup(popupContent);
-                    
-                    // Add hover listeners
-                    marker.on('mouseover', function(e) {
-                        console.log('Mouse over ship:', ship.flight); // Debug log
-                        this.openPopup();
-                    });
-                    
-                    marker.on('mouseout', function(e) {
-                        console.log('Mouse out ship:', ship.flight); // Debug log
-                        this.closePopup();
-                    });
-                    
-                    // Set icon and add to map
-                    marker.setIcon(shipIcon);
+                    // Create new marker if it doesn't exist
+                    console.log(`Creating new marker for ${ship.flight}`);
+                    const marker = new L.Marker([latitude, longitude], {icon: shipIcon});
+                    marker.bindPopup(createPopupContent(ship));
+                    marker.on('mouseover', function() { this.openPopup(); });
+                    marker.on('mouseout', function() { this.closePopup(); });
                     marker.addTo(map);
-                    
-                    if (ship.cog) {
-                        marker.setRotationAngle(parseFloat(ship.cog));
-                    }
-                    
                     shipMarkers[ship.flight] = marker;
                 } else {
+                    // Update existing marker
                     const marker = shipMarkers[ship.flight];
-                    const popupContent = `
-                    <div style="padding: 10px;">
-                        <h4 style="margin: 0 0 5px 0;">${ship.flight}</h4>
-                        <p style="margin: 5px 0;">Type: ${ship.type || 'Unknown'}</p>
-                        <p style="margin: 5px 0;">Length: ${ship.length || 'N/A'} m</p>
-                        <p style="margin: 5px 0;">Width: ${ship.width || 'N/A'} m</p>
-                        <p style="margin: 5px 0;">Speed: ${ship.sog !== 'N/A' ? `${ship.sog} knots` : 'N/A'}</p>
-                    </div>
-                `;
-                    marker.setPopupContent(popupContent);
+                    marker.setIcon(shipIcon);
                     marker.setLatLng([latitude, longitude]);
-                    if (ship.cog) {
-                        marker.setRotationAngle(parseFloat(ship.cog));
-                    }
+                    marker.setPopupContent(createPopupContent(ship));
+                }
+
+                if (ship.cog) {
+                    shipMarkers[ship.flight].setRotationAngle(parseFloat(ship.cog));
                 }
             } catch (error) {
                 console.error(`Error handling ship ${ship.flight}:`, error);
             }
-        } else {
-            console.error(`Invalid coordinates for ${ship.flight}: [${latitude}, ${longitude}]`);
         }
     });
+
+    // Remove markers for ships no longer in the data
+    Object.keys(shipMarkers).forEach(shipName => {
+        if (!activeShips.has(shipName)) {
+            map.removeLayer(shipMarkers[shipName]);
+            delete shipMarkers[shipName];
+        }
+    });
+}
+
+// Helper function to create popup content
+function createPopupContent(ship) {
+    return `
+    <div style="padding: 10px;">
+        <h4 style="margin: 0 0 5px 0;">${ship.flight}</h4>
+        <p style="margin: 5px 0;">Type: ${ship.type || 'Unknown'}</p>
+        <p style="margin: 5px 0;">Length: ${ship.length || 'N/A'} m</p>
+        <p style="margin: 5px 0;">Width: ${ship.width || 'N/A'} m</p>
+        <p style="margin: 5px 0;">Speed: ${ship.sog !== 'N/A' ? `${ship.sog} knots` : 'N/A'}</p>
+    </div>
+    `;
 }
 
 
@@ -225,7 +198,7 @@ document.addEventListener("DOMContentLoaded", function() {
   fetchShipData();
 
   // Optionally set an interval to refresh the data periodically
-  setInterval(fetchShipData, 5000); // Refresh every 5 seconds
+  setInterval(fetchShipData, 500); // Refresh every half second
 });
 
 //=============================================================

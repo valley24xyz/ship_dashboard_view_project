@@ -3,11 +3,14 @@ const WebSocket = require('ws');
 const app = express();
 const port = process.env.PORT || 8080;
 
+
 // Store ships currently in the bounding box
 let shipsData = [];
 let shipCache = {}; // Cache to store ship data
 let socket = null; // Initialize socket as null
 let boundingBox = null; // Set initially to null
+let shipPositionHistory = {}; // Add this line to track position history //TRAILS
+
 
 app.use('/', express.static('public'));
 
@@ -89,6 +92,11 @@ function handleAISMessage(event) {
         if (aisMessage.MessageType === 'PositionReport') {
             const positionReport = aisMessage.Message.PositionReport;
             console.log('Raw Position Report:', positionReport);
+
+            console.log('New position for', aisMessage.MetaData.ShipName, ':', {
+                latitude: positionReport.Latitude,
+                longitude: positionReport.Longitude
+            });
             
             console.log('MetaData:', aisMessage.MetaData);
             console.log('Position:', {
@@ -98,9 +106,14 @@ function handleAISMessage(event) {
 
             const shipName = aisMessage.MetaData.ShipName?.trim();
 
-            if (!shipName) {
-                console.log('Skipping ship with undefined name');
-                return;
+            if (shipName) {
+                const existingShip = shipsData.find(ship => ship.flight === shipName);
+                if (existingShip) {
+                    console.log(`Position update for ${shipName}:`);
+                    console.log(`  Old position: [${existingShip.latitude}, ${existingShip.longitude}]`);
+                    console.log(`  New position: [${positionReport.Latitude}, ${positionReport.Longitude}]`);
+                    console.log(`  Speed: ${positionReport.Sog} knots`);
+                }
             }
 
             const latitude = positionReport.Latitude;
@@ -115,6 +128,32 @@ function handleAISMessage(event) {
 
             if (isWithinBoundingBox(latitude, longitude)) {
                 console.log(`Ship ${shipName} is within the bounding box.`);
+                // Add position history tracking
+                if (!shipPositionHistory[shipName]) {
+                    shipPositionHistory[shipName] = [];
+                }
+    
+                const timestamp = new Date();
+                shipPositionHistory[shipName].push({
+                    time: timestamp,
+                    lat: latitude,
+                    lng: longitude,
+                    speed: positionReport.Sog
+                });
+
+                // Keep only last 5 positions
+                if (shipPositionHistory[shipName].length > 5) {
+                    shipPositionHistory[shipName].shift();
+                }
+
+                // Log full history when we have multiple positions
+                if (shipPositionHistory[shipName].length > 1) {
+                    console.log(`\nPosition history for ${shipName}:`);
+                    shipPositionHistory[shipName].forEach((pos, index) => {
+                        console.log(`  ${index + 1}. [${pos.lat}, ${pos.lng}] Speed: ${pos.speed || 'N/A'} knots at ${pos.time.toISOString()}`);
+                    });
+                   console.log('\n');
+                }
 
                 const shipData = {
                     flight: shipName,
