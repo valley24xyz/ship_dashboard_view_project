@@ -27,6 +27,15 @@ var map;
 var shipMarkers = {};
 var shipData = {};
 
+function clearAllMarkers() {
+    for (let shipName in shipMarkers) {
+        if (shipMarkers[shipName]) {
+            map.removeLayer(shipMarkers[shipName]);
+            delete shipMarkers[shipName];
+        }
+    }
+}
+
 document.addEventListener("DOMContentLoaded", function() {
   console.log('DOM Content Loaded - Starting initialization');
 
@@ -83,6 +92,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
   // Function to update the map with ship data
   function updateMap(shipsData) {
+    clearAllMarkers();
     console.log('Starting map update with:', shipsData);
 
     console.log('Current working directory paths:', {
