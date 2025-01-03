@@ -230,6 +230,9 @@ app.get('/api/arrivals', (req, res) => {
 app.get('/api/setBoundingBox', (req, res) => {
     const { neLat, neLng, swLat, swLng } = req.query;
 
+    // Clear existing ships data when bounding box changes
+    shipsData = [];  // Add this line
+
     // Correct the bounding box interpretation
     boundingBox = {
         nw: { lat: parseFloat(neLat), lng: parseFloat(swLng) }, // Northwest (top-left) = neLat + swLng
