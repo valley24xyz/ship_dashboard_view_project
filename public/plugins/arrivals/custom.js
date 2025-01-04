@@ -26,6 +26,10 @@ var map;
 // Define shipMarkers outside the event handler
 var shipMarkers = {};
 var shipData = {};
+// Add these at the global level with your other variables
+var shipTrails = {};
+var shipPositions = {}; // Store array of positions for each ship
+const MAX_TRAIL_LENGTH = 20; // Maximum number of positions to keep
 
 function clearAllMarkers() {
     for (let shipName in shipMarkers) {
@@ -102,27 +106,76 @@ document.addEventListener("DOMContentLoaded", function() {
             console.warn('Skipping ship with undefined name:', ship);
             return;
         }
-        
         const latitude = parseFloat(ship.latitude);
         const longitude = parseFloat(ship.longitude);
-        
         activeShips.add(ship.flight);
-        
+    
         if (!isNaN(latitude) && !isNaN(longitude)) {
             try {
-                // Determine icon based on ship length
+                // Add trail tracking here
+                if (ship.positionHistory && ship.positionHistory.length > 0) {
+                    shipPositions[ship.flight] = ship.positionHistory.map(pos => [pos.lat, pos.lng]);
+                }
+                shipPositions[ship.flight].push([latitude, longitude]);
+                if (shipPositions[ship.flight].length > MAX_TRAIL_LENGTH) {
+                    shipPositions[ship.flight].shift();
+                }
+    
+                // Create or update trail
+                // Inside your updateMap function, where you create/update trails
+                if (shipPositions[ship.flight].length > 1) {
+                    if (!shipTrails[ship.flight]) {
+                        // Create line trail
+                        const trail = L.polyline(shipPositions[ship.flight], {
+                            color: ship.length > 100 ? '#FF6B6B' : '#4BC0C0',
+                            weight: 2,
+                            opacity: 0.6
+                        }).addTo(map);
+        
+                        // Add dots at each position
+                        const dots = shipPositions[ship.flight].map(pos => 
+                            L.circleMarker(pos, {
+                                radius: 3,
+                                fillColor: ship.length > 100 ? '#FF6B6B' : '#4BC0C0',
+                                fillOpacity: 0.8,
+                                stroke: false
+                            }).addTo(map)
+                        );
+        
+                        shipTrails[ship.flight] = {
+                            line: trail,
+                            dots: dots
+                        };
+                    } else {
+                        // Update existing trail
+                        shipTrails[ship.flight].line.setLatLngs(shipPositions[ship.flight]);
+        
+                        // Remove old dots
+                        shipTrails[ship.flight].dots.forEach(dot => map.removeLayer(dot));
+        
+                        // Create new dots
+                        shipTrails[ship.flight].dots = shipPositions[ship.flight].map(pos => 
+                            L.circleMarker(pos, {
+                                radius: 3,
+                                fillColor: ship.length > 100 ? '#FF6B6B' : '#4BC0C0',
+                                fillOpacity: 0.8,
+                                stroke: false
+                            }).addTo(map)
+                        );
+                    }
+                }
+    
+                // Your existing marker code stays exactly the same
                 let iconPath = 'img/boat_top.png';
                 if (ship.length && parseFloat(ship.length) > 100) {
                     iconPath = 'img/big_cargo.png';
                 }
-
                 const shipIcon = L.icon({
                     iconUrl: iconPath,
                     iconSize: [40, 40],
                     iconAnchor: [20, 20],
                     popupAnchor: [0, -16]
                 });
-                
                 if (!shipMarkers[ship.flight]) {
                     // Create new marker if it doesn't exist
                     console.log(`Creating new marker for ${ship.flight}`);
@@ -139,7 +192,6 @@ document.addEventListener("DOMContentLoaded", function() {
                     marker.setLatLng([latitude, longitude]);
                     marker.setPopupContent(createPopupContent(ship));
                 }
-
                 if (ship.cog) {
                     shipMarkers[ship.flight].setRotationAngle(parseFloat(ship.cog));
                 }
@@ -148,14 +200,19 @@ document.addEventListener("DOMContentLoaded", function() {
             }
         }
     });
-
-    // Remove markers for ships no longer in the data
-    Object.keys(shipMarkers).forEach(shipName => {
-        if (!activeShips.has(shipName)) {
-            map.removeLayer(shipMarkers[shipName]);
-            delete shipMarkers[shipName];
-        }
-    });
+    
+// At the end of updateMap, replace the current cleanup with:
+Object.keys(shipMarkers).forEach(shipName => {
+    if (!activeShips.has(shipName)) {
+        map.removeLayer(shipMarkers[shipName]);
+        map.removeLayer(shipTrails[shipName]);
+        shipTrails[shipName].dots.forEach(dot => map.removeLayer(dot));
+        delete shipMarkers[shipName];
+        delete shipTrails[shipName];
+        // Don't delete position history - keep it for when ship returns
+        // delete shipPositions[shipName];
+    }
+});
 }
 
 // Helper function to create popup content
@@ -198,7 +255,7 @@ function createPopupContent(ship) {
   fetchShipData();
 
   // Optionally set an interval to refresh the data periodically
-  setInterval(fetchShipData, 500); // Refresh every half second
+  setInterval(fetchShipData, 5000); // Refresh every half second
 });
 
 //=============================================================

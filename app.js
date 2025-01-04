@@ -187,6 +187,11 @@ function handleAISMessage(event) {
                 console.log('Updated shipsData:', shipsData);
             } else {
                 console.log(`Ship ${shipName} is outside the bounding box.`);
+                // Remove ship from shipsData if it exists
+                const existingIndex = shipsData.findIndex(ship => ship.flight === shipName);
+                if (existingIndex !== -1) {
+                shipsData.splice(existingIndex, 1);
+                }
             }
         } else if (aisMessage.MessageType === 'ShipStaticData') {
             const staticData = aisMessage.Message.ShipStaticData;
@@ -261,8 +266,13 @@ initializeWebSocket();
 
 // API route to serve AIS data directly
 app.get('/api/arrivals', (req, res) => {
-    console.log('Sending shipsData:', JSON.stringify(shipsData, null, 2));
-    res.json({ data: shipsData });
+    // Add position history to each ship's data
+    const shipsWithHistory = shipsData.map(ship => ({
+        ...ship,
+        positionHistory: shipPositionHistory[ship.flight] || []
+    }));
+    console.log('Sending shipsData with history:', JSON.stringify(shipsWithHistory, null, 2));
+    res.json({ data: shipsWithHistory });
 });
 
 // API route to update bounding box dynamically
