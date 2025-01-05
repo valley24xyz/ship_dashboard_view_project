@@ -7,6 +7,14 @@
     <link rel="icon" type="image/x-icon" href="favicon.ico">
     <link rel="stylesheet" href="css/base.css" />
 
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Quantico&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+
+
+
     <!-- MAP -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
@@ -25,6 +33,7 @@
   width: 100%;                     /* Ensure full width */
   margin-bottom: 10px;             /* Add some spacing below the headers */
 }
+
 
 .header {
   font-size: 18px;
@@ -100,7 +109,80 @@ input#sea:checked ~ .slider {
 </head>
 <body>
   <!-- Add a div to hold the map -->
-  <div id="map" style="width: 1350px; height: 600px; margin-top: 75px"></div>
+
+<!-- Replace your current loading overlay with this one -->
+<div class="button-container">
+  <button class="back-button" onclick="window.location.href='index.html'">← BACK</button>
+</div>
+<div id="map" style="width: 1350px; height: 600px; margin-top: 75px; position: relative;">
+  <!-- Updated loading overlay with two message states -->
+  <div id="loadingOverlay" style="display: none; position: fixed; top: 25%; left: 50%; transform: translate(-50%, -50%); background: rgb(0, 0, 0, 0.8); padding: 30px; border-radius: 10px; text-align: center; z-index: 1000; min-width: 300px;">
+    <div style="display: flex; flex-direction: column; align-items: center; gap: 15px;">
+        <!-- Loading Spinner Container -->
+        <div id="loadingSpinner" style="width: 50px; height: 50px;">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 50 50">
+                <circle cx="25" cy="25" r="20" fill="none" stroke="#cccccc" stroke-width="5"/>
+                <circle cx="25" cy="25" r="20" fill="none" stroke="#666666" stroke-width="5" stroke-dasharray="60 120">
+                    <animateTransform
+                        attributeName="transform"
+                        attributeType="XML"
+                        type="rotate"
+                        from="0 25 25"
+                        to="360 25 25"
+                        dur="1s"
+                        repeatCount="indefinite"/>
+                </circle>
+            </svg>
+        </div>
+        <!-- Initial Loading Message -->
+        <div id="loadingMessage" style="display: flex; flex-direction: column; align-items: center; gap: 5px;">
+            <h2 style="font-size: 1.5rem; margin: 0; color: #ffffff;">Loading Ships...</h2>
+            <p style="margin: 0; color: #cccccc;">Receiving AIS signals from ships in the area</p>
+            <p style="font-size: 0.875rem; margin: 0; color: #888888;">This may take a few seconds as ships broadcast their positions</p>
+        </div>
+        <!-- No Data Message (initially hidden) -->
+        <div id="noDataMessage" style="display: none; flex-direction: column; align-items: center; gap: 5px;">
+            <h2 style="font-size: 1.5rem; margin: 0; color: #ffffff;">No AIS Data Detected</h2>
+            <p style="margin: 0; color: #cccccc;">No ships found broadcasting AIS signals in this area</p>
+            <p style="font-size: 0.875rem; margin: 0; color: #888888;">Try selecting a different area</p>
+        </div>
+    </div>
+</div>
+</div>
+
+<!-- Add this style to your header or in a <style> tag -->
+<style>
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.back-button {
+    font-family: 'Share Tech', sans-serif;
+    background-color: #1a1a1a;
+    color: #ffffff;
+    border: 2px solid #333333;
+    padding: 8px 16px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    position: absolute;
+    left: 20px;
+    top: 20px;
+}
+
+.back-button:hover {
+    background-color: #333333;
+    border-color: #444444;
+    box-shadow: 0 0 10px rgba(51, 51, 51, 0.5);
+}
+
+.back-button:active {
+    transform: translateY(1px);
+}
+</style>
 <!-- ============================================ -->
 <!-- TOGGLE -->
 <!-- ============================================ -->
@@ -111,9 +193,9 @@ input#sea:checked ~ .slider {
      <!-- Add a container for the split-flap board -->
      <div id="board" class="chartContainer splitflap" style="margin-left:50px">
       <div class="dashboard-header">
-        <div class="header" style="width: 780px; text-align: left">Vessel Name</div>
-        <div class="header" style="width: 380px; text-align: left">Type</div>
-      
+        <div class="header" style="width: 780px; text-align: left; font-family: 'Quantico'">Vessel Name</div>
+        <div class="header" style="width: 380px; text-align: left; font-family: 'Quantico">Type</div>
+        <div class="header" style="width: 200px; text-align: right; font-family: 'Quantico">Under Way</div>
         <!-- toggle switch  -->
         <!--
        <div class="toggle-container">

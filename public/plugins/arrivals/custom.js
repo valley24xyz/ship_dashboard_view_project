@@ -30,6 +30,54 @@ var shipData = {};
 var shipTrails = {};
 var shipPositions = {}; // Store array of positions for each ship
 const MAX_TRAIL_LENGTH = 20; // Maximum number of positions to keep
+let loadingTimeout = null;
+const LOADING_TIMEOUT_DURATION = 90000; // 90 seconds
+
+
+let initialDataReceived = false; // for loading screen
+
+function showNoDataMessage() {
+    const loadingSpinner = document.getElementById('loadingSpinner');
+    const loadingMessage = document.getElementById('loadingMessage');
+    const noDataMessage = document.getElementById('noDataMessage');
+    if (loadingSpinner && loadingMessage && noDataMessage) {
+        loadingSpinner.style.display = 'none';
+        loadingMessage.style.display = 'none';
+        noDataMessage.style.display = 'flex';
+    }
+}
+
+function resetLoadingMessage() {
+    const loadingSpinner = document.getElementById('loadingSpinner');
+    const loadingMessage = document.getElementById('loadingMessage');
+    const noDataMessage = document.getElementById('noDataMessage');
+    if (loadingSpinner && loadingMessage && noDataMessage) {
+        loadingSpinner.style.display = 'block';
+        loadingMessage.style.display = 'flex';
+        noDataMessage.style.display = 'none';
+    }
+}
+
+function startLoadingTimeout() {
+    // Clear any existing timeout
+    if (loadingTimeout) {
+        clearTimeout(loadingTimeout);
+    }
+    
+    // Set new timeout
+    loadingTimeout = setTimeout(() => {
+        if (!initialDataReceived) {
+            showNoDataMessage();
+        }
+    }, LOADING_TIMEOUT_DURATION);
+}
+
+function clearLoadingTimeout() {
+    if (loadingTimeout) {
+        clearTimeout(loadingTimeout);
+        loadingTimeout = null;
+    }
+}
 
 function clearAllMarkers() {
     for (let shipName in shipMarkers) {
@@ -84,11 +132,23 @@ document.addEventListener("DOMContentLoaded", function() {
 
   // If bounding box coordinates are available, draw the bounding box on the map
   if (neLat && neLng && swLat && swLng) {
+    initialDataReceived = false;
+    try {
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        if (loadingOverlay) {
+            loadingOverlay.style.display = 'flex';
+            resetLoadingMessage(); // Reset to initial loading message
+            startLoadingTimeout(); // Start the timeout
+        }
+    } catch (error) {
+        console.error('Error showing loading overlay:', error);
+    }
+    
     const bounds = [[swLat, swLng], [neLat, neLng]];
-    const boundingBox = L.rectangle(bounds, { color: "#FFFF00", weight: 2 }).addTo(map);
-    boundingBox.bindPopup("Selected Tracking Area");
-    map.fitBounds(bounds);  // Adjust the map to fit the bounding box
-  }
+    boundingBoxLayer = L.rectangle(bounds, { color: "#FFFF00", weight: 2 }).addTo(map);
+    boundingBoxLayer.bindPopup("Selected Tracking Area");
+    map.fitBounds(bounds);
+}
 
   // Debug map initialization
   console.log('Map container:', document.getElementById('map'));
@@ -97,7 +157,18 @@ document.addEventListener("DOMContentLoaded", function() {
   // Function to update the map with ship data
   function updateMap(shipsData) {
     console.log('Starting map update with:', shipsData);
-    
+    if (!initialDataReceived && shipsData.length > 0) {
+        initialDataReceived = true;
+        clearLoadingTimeout(); // Clear the timeout since we got data
+        try {
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            if (loadingOverlay) {
+                loadingOverlay.style.display = 'none';
+            }
+        } catch (error) {
+            console.error('Error hiding loading overlay:', error);
+        }
+    }
     // Track which ships are still active
     const activeShips = new Set();
     
@@ -127,7 +198,7 @@ document.addEventListener("DOMContentLoaded", function() {
                     if (!shipTrails[ship.flight]) {
                         // Create line trail
                         const trail = L.polyline(shipPositions[ship.flight], {
-                            color: ship.length > 100 ? '#FF6B6B' : '#4BC0C0',
+                            color: '#4BC0C0',
                             weight: 2,
                             opacity: 0.6
                         }).addTo(map);
@@ -136,7 +207,7 @@ document.addEventListener("DOMContentLoaded", function() {
                         const dots = shipPositions[ship.flight].map(pos => 
                             L.circleMarker(pos, {
                                 radius: 3,
-                                fillColor: ship.length > 100 ? '#FF6B6B' : '#4BC0C0',
+                                fillColor:'#4BC0C0',
                                 fillOpacity: 0.8,
                                 stroke: false
                             }).addTo(map)
