@@ -36,6 +36,22 @@ const LOADING_TIMEOUT_DURATION = 90000; // 90 seconds
 
 let initialDataReceived = false; // for loading screen
 
+function calculateDistanceInMiles(lat1, lon1, lat2, lon2) {
+    const R = 3959; // Earth's radius in miles
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = 
+        Math.sin(dLat/2) * Math.sin(dLat/2) +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+        Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+}
+
+// Add this temporary test near your function definition
+console.log("Distance test:", calculateDistanceInMiles(42.3601, -71.0589, 42.3601, -71.0590), "miles"); // Should be a very small distance
+console.log("Distance test:", calculateDistanceInMiles(42.3601, -71.0589, 43.3601, -72.0589), "miles"); // Should be many miles
+
 function showNoDataMessage() {
     const loadingSpinner = document.getElementById('loadingSpinner');
     const loadingMessage = document.getElementById('loadingMessage');
@@ -86,6 +102,13 @@ function clearAllMarkers() {
             delete shipMarkers[shipName];
         }
     }
+}
+
+function clearAllShipData() {
+    shipMarkers = {};
+    shipTrails = {};
+    shipPositions = {};
+    shipData = {};
 }
 
 document.addEventListener("DOMContentLoaded", function() {
@@ -155,8 +178,29 @@ document.addEventListener("DOMContentLoaded", function() {
   console.log('Initial map object:', map);
 
   // Function to update the map with ship data
+
+
+  function calculateDistanceInMiles(lat1, lon1, lat2, lon2) {
+    const R = 3959; // Earth's radius in miles
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = 
+        Math.sin(dLat/2) * Math.sin(dLat/2) +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+        Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+}
+
+
   function updateMap(shipsData) {
     console.log('Starting map update with:', shipsData);
+
+    // Clear all positions if this is the first data received
+    if (!initialDataReceived && shipsData.length > 0) {
+        shipPositions = {};
+    }
+
     if (!initialDataReceived && shipsData.length > 0) {
         initialDataReceived = true;
         clearLoadingTimeout(); // Clear the timeout since we got data
@@ -184,57 +228,85 @@ document.addEventListener("DOMContentLoaded", function() {
         if (!isNaN(latitude) && !isNaN(longitude)) {
             try {
                 // Add trail tracking here
-                if (ship.positionHistory && ship.positionHistory.length > 0) {
-                    shipPositions[ship.flight] = ship.positionHistory.map(pos => [pos.lat, pos.lng]);
-                }
-                shipPositions[ship.flight].push([latitude, longitude]);
-                if (shipPositions[ship.flight].length > MAX_TRAIL_LENGTH) {
-                    shipPositions[ship.flight].shift();
-                }
+        // Initialize or update position tracking
+        if (!shipPositions[ship.flight]) {
+            shipPositions[ship.flight] = [];
+        }
+
+        // Only use position history if this is the first time we're seeing this ship
+        if (shipPositions[ship.flight].length === 0 && ship.positionHistory && ship.positionHistory.length > 0) {
+            shipPositions[ship.flight] = ship.positionHistory.map(pos => [pos.lat, pos.lng]);
+        }
+
+        // Add the new position
+        shipPositions[ship.flight].push([latitude, longitude]);
+        if (shipPositions[ship.flight].length > MAX_TRAIL_LENGTH) {
+            shipPositions[ship.flight].shift();
+        }
     
                 // Create or update trail
                 // Inside your updateMap function, where you create/update trails
                 if (shipPositions[ship.flight].length > 1) {
-                    if (!shipTrails[ship.flight]) {
-                        // Create line trail
-                        const trail = L.polyline(shipPositions[ship.flight], {
-                            color: '#4BC0C0',
-                            weight: 2,
-                            opacity: 0.6
-                        }).addTo(map);
-        
-                        // Add dots at each position
-                        const dots = shipPositions[ship.flight].map(pos => 
-                            L.circleMarker(pos, {
-                                radius: 3,
-                                fillColor:'#4BC0C0',
-                                fillOpacity: 0.8,
-                                stroke: false
-                            }).addTo(map)
-                        );
-        
-                        shipTrails[ship.flight] = {
-                            line: trail,
-                            dots: dots
-                        };
+                    const positions = shipPositions[ship.flight];
+                    const lastPos = positions[positions.length - 1];
+                    const prevPos = positions[positions.length - 2];
+                    const distance = calculateDistanceInMiles(prevPos[0], prevPos[1], lastPos[0], lastPos[1]);
+                    
+                    console.log(`Ship ${ship.flight} - Distance: ${distance.toFixed(3)} miles`);
+                    
+                    // If distance is too large, clear the trail and start fresh
+                    if (distance > 0.1) {
+                        if (shipTrails[ship.flight]) {
+                            shipTrails[ship.flight].line.remove();
+                            shipTrails[ship.flight].dots.forEach(dot => dot.remove());
+                            delete shipTrails[ship.flight];
+                        }
+                        // Reset positions to just the current position
+                        shipPositions[ship.flight] = [[latitude, longitude]];
                     } else {
-                        // Update existing trail
-                        shipTrails[ship.flight].line.setLatLngs(shipPositions[ship.flight]);
-        
-                        // Remove old dots
-                        shipTrails[ship.flight].dots.forEach(dot => map.removeLayer(dot));
-        
-                        // Create new dots
-                        shipTrails[ship.flight].dots = shipPositions[ship.flight].map(pos => 
-                            L.circleMarker(pos, {
-                                radius: 3,
-                                fillColor: ship.length > 100 ? '#FF6B6B' : '#4BC0C0',
-                                fillOpacity: 0.8,
-                                stroke: false
-                            }).addTo(map)
-                        );
+                        // Only create/update trail if distance is reasonable
+                        if (!shipTrails[ship.flight]) {
+                            // Create line trail
+                            const trail = L.polyline(shipPositions[ship.flight], {
+                                color: '#4BC0C0',
+                                weight: 2,
+                                opacity: 0.6
+                            }).addTo(map);
+                
+                            // Add dots at each position
+                            const dots = shipPositions[ship.flight].map(pos => 
+                                L.circleMarker(pos, {
+                                    radius: 3,
+                                    fillColor:'#4BC0C0',
+                                    fillOpacity: 0.8,
+                                    stroke: false
+                                }).addTo(map)
+                            );
+                
+                            shipTrails[ship.flight] = {
+                                line: trail,
+                                dots: dots
+                            };
+                        } else {
+                            // Update existing trail
+                            shipTrails[ship.flight].line.setLatLngs(shipPositions[ship.flight]);
+                
+                            // Remove old dots
+                            shipTrails[ship.flight].dots.forEach(dot => map.removeLayer(dot));
+                
+                            // Create new dots
+                            shipTrails[ship.flight].dots = shipPositions[ship.flight].map(pos => 
+                                L.circleMarker(pos, {
+                                    radius: 3,
+                                    fillColor: '#4BC0C0',
+                                    fillOpacity: 0.8,
+                                    stroke: false
+                                }).addTo(map)
+                            );
+                        }
                     }
                 }
+                
     
                 // Your existing marker code stays exactly the same
                 let iconPath = 'img/boat_top.png';
