@@ -14,6 +14,9 @@ let shipPositionHistory = {}; // Add this line to track position history //TRAIL
 
 app.use('/', express.static('public'));
 
+// Add this line to parse JSON bodies
+app.use(express.json());
+
 // Helper function to check if a ship's position is within the bounding box
 function isWithinBoundingBox(lat, lng) {
     if (!boundingBox) {
@@ -87,55 +90,44 @@ function getShipType(typeCode) {
 function handleAISMessage(event) {
     try {
         const aisMessage = JSON.parse(event.data);
-        console.log('Message Type:', aisMessage.MessageType);
+        console.log('Received AIS message type:', aisMessage.MessageType);
         
         if (aisMessage.MessageType === 'PositionReport') {
             const positionReport = aisMessage.Message.PositionReport;
-            console.log('Raw Position Report:', positionReport);
-
-            console.log('New position for', aisMessage.MetaData.ShipName, ':', {
-                latitude: positionReport.Latitude,
-                longitude: positionReport.Longitude
-            });
+            console.log('Processing position report:', positionReport);
             
-            console.log('MetaData:', aisMessage.MetaData);
-            console.log('Position:', {
-                latitude: positionReport.Latitude,
-                longitude: positionReport.Longitude
-            });
-
             const shipName = aisMessage.MetaData.ShipName?.trim();
-
-            if (shipName) {
-                const existingShip = shipsData.find(ship => ship.flight === shipName);
-                if (existingShip) {
-                    console.log(`Position update for ${shipName}:`);
-                    console.log(`  Old position: [${existingShip.latitude}, ${existingShip.longitude}]`);
-                    console.log(`  New position: [${positionReport.Latitude}, ${positionReport.Longitude}]`);
-                    console.log(`  Speed: ${positionReport.Sog} knots`);
-                }
-            }
-
             const latitude = positionReport.Latitude;
             const longitude = positionReport.Longitude;
 
-            console.log('About to check bounding box for:', {
-                shipName,
-                latitude,
-                longitude,
-                boundingBox
-            });
-
             if (isWithinBoundingBox(latitude, longitude)) {
-                console.log(`Ship ${shipName} is within the bounding box.`);
-                // Add position history tracking
+                console.log(`Ship ${shipName} is within the bounding box. Adding to shipsData.`);
+                
+                const shipData = {
+                    flight: shipName,
+                    latitude,
+                    longitude,
+                    cog: positionReport.Cog || 'N/A',
+                    sog: positionReport.Sog || 'N/A',
+                    // Use cached type data or default to "Loading..."
+                    city: shipCache[aisMessage.MetaData.MMSI]?.type || 'Loading...',
+                    gate: shipCache[aisMessage.MetaData.MMSI]?.type || 'Loading...',
+                    airline: "AIS",
+                    scheduled: "",
+                    status: (positionReport.Sog && positionReport.Sog > 0) ? "A" : "B",
+                    remarks: "",
+                    length: shipCache[aisMessage.MetaData.MMSI]?.length || 'N/A',
+                    width: shipCache[aisMessage.MetaData.MMSI]?.width || 'N/A',
+                    type: shipCache[aisMessage.MetaData.MMSI]?.type || 'Loading...'
+                };
+
+                // Update position history
                 if (!shipPositionHistory[shipName]) {
                     shipPositionHistory[shipName] = [];
                 }
-    
-                const timestamp = new Date();
+                
                 shipPositionHistory[shipName].push({
-                    time: timestamp,
+                    time: new Date(),
                     lat: latitude,
                     lng: longitude,
                     speed: positionReport.Sog
@@ -146,51 +138,26 @@ function handleAISMessage(event) {
                     shipPositionHistory[shipName].shift();
                 }
 
-                // Log full history when we have multiple positions
-                if (shipPositionHistory[shipName].length > 1) {
-                    console.log(`\nPosition history for ${shipName}:`);
-                    shipPositionHistory[shipName].forEach((pos, index) => {
-                        console.log(`  ${index + 1}. [${pos.lat}, ${pos.lng}] Speed: ${pos.speed || 'N/A'} knots at ${pos.time.toISOString()}`);
-                    });
-                   console.log('\n');
-                }
-
-                const shipData = {
-                    flight: shipName,
-                    latitude,
-                    longitude,
-                    cog: positionReport.Cog || 'N/A',
-                    sog: positionReport.Sog || 'N/A',
-                    // Add these fields for the split-flap display
-                    city: shipCache[aisMessage.MetaData.MMSI]?.type || 'Loading...',  // This is used for the Type column
-                    gate: shipCache[aisMessage.MetaData.MMSI]?.type || 'Loading...',  // Backup field
-                    airline: "AIS",  // Required by split-flap but not displayed
-                    scheduled: "",   // Required by split-flap but not displayed
-                    status: (positionReport.Sog && positionReport.Sog > 0) ? "A" : "B",
-                    remarks: "",     // Required by split-flap but not displayed
-                    // Keep the rest of your fields
-                    length: shipCache[aisMessage.MetaData.MMSI]?.length || 'N/A',
-                    width: shipCache[aisMessage.MetaData.MMSI]?.width || 'N/A',
-                    type: shipCache[aisMessage.MetaData.MMSI]?.type || 'Loading...'
-                };
-
                 const existingIndex = shipsData.findIndex(ship => ship.flight === shipName);
                 if (existingIndex !== -1) {
-                    shipsData[existingIndex] = { 
-                        ...shipsData[existingIndex], 
-                        ...shipData 
-                    }; // Update while preserving existing data
+                    shipsData[existingIndex] = { ...shipsData[existingIndex], ...shipData };
                 } else {
                     shipsData.push(shipData);
                 }
 
-                console.log('Updated shipsData:', shipsData);
-            } else {
-                console.log(`Ship ${shipName} is outside the bounding box.`);
-                // Remove ship from shipsData if it exists
-                const existingIndex = shipsData.findIndex(ship => ship.flight === shipName);
-                if (existingIndex !== -1) {
-                shipsData.splice(existingIndex, 1);
+                // Request static data immediately if we don't have it
+                if (!shipCache[aisMessage.MetaData.MMSI]?.type) {
+                    const staticDataRequest = {
+                        APIKey: 'b90d644c4476899539d3477f001fe4ee016f5feb',
+                        BoundingBoxes: [[[boundingBox.nw.lat, boundingBox.nw.lng], [boundingBox.se.lat, boundingBox.se.lng]]],
+                        FilterMessageTypes: ["ShipStaticData"],
+                        MMSIFilter: [aisMessage.MetaData.MMSI]
+                    };
+                    
+                    if (socket && socket.readyState === WebSocket.OPEN) {
+                        socket.send(JSON.stringify(staticDataRequest));
+                        console.log('Requested static data for MMSI:', aisMessage.MetaData.MMSI);
+                    }
                 }
             }
         } else if (aisMessage.MessageType === 'ShipStaticData') {
@@ -202,7 +169,7 @@ function handleAISMessage(event) {
                 const dimension = staticData.Dimension;
                 const length = dimension ? (dimension.A + dimension.B) : 'N/A';
                 const width = dimension ? (dimension.C + dimension.D) : 'N/A';
-                
+        
                 // Update cache
                 shipCache[aisMessage.MetaData.MMSI] = {
                     ...shipCache[aisMessage.MetaData.MMSI],
@@ -216,9 +183,11 @@ function handleAISMessage(event) {
                 if (existingIndex !== -1) {
                     shipsData[existingIndex] = {
                         ...shipsData[existingIndex],
-                        length: length,
-                        width: width,
-                        type: getShipType(typeCode)
+                        length,
+                        width,
+                        type: getShipType(typeCode),
+                        city: getShipType(typeCode),  // Update display fields
+                        gate: getShipType(typeCode)
                     };
                 }
                 console.log(`Updated static data for ${shipName}: Type=${getShipType(typeCode)}, Length=${length}, Width=${width}`);
@@ -235,12 +204,15 @@ function initializeWebSocket() {
     socket.onopen = () => {
         console.log('WebSocket connection opened.');
         if (boundingBox) {
+            console.log('Sending initial subscription with bounding box:', boundingBox);
             subscribeToAIS(socket);
+        } else {
+            console.log('No bounding box set yet');
         }
     };
 
     socket.onmessage = (event) => {
-        console.log("Raw AIS Message:", event.data);
+        console.log("Raw AIS Message received");
         const message = JSON.parse(event.data);
         if (message.MessageType === 'SubscriptionSuccess') {
             console.log('Successfully subscribed to AIS feed');
@@ -266,21 +238,29 @@ initializeWebSocket();
 
 // API route to serve AIS data directly
 app.get('/api/arrivals', (req, res) => {
+    console.log('Received request for /api/arrivals');
+    console.log('Current shipsData:', shipsData);
+    console.log('Current shipPositionHistory:', shipPositionHistory);
+    console.log('Current boundingBox:', boundingBox);
+    
     // Add position history to each ship's data
     const shipsWithHistory = shipsData.map(ship => ({
         ...ship,
         positionHistory: shipPositionHistory[ship.flight] || []
     }));
+    
     console.log('Sending shipsData with history:', JSON.stringify(shipsWithHistory, null, 2));
     res.json({ data: shipsWithHistory });
 });
 
 // API route to update bounding box dynamically
-app.get('/api/setBoundingBox', (req, res) => {
-    const { neLat, neLng, swLat, swLng } = req.query;
+app.post('/api/boundingBox', (req, res) => {
+    const { neLat, neLng, swLat, swLng } = req.body;
 
-    // Clear existing ships data when bounding box changes
-    shipsData = [];  // Add this line
+    // Clear existing ships data and position history when bounding box changes
+    shipsData = [];  
+    shipPositionHistory = {};  // Add this line to clear position history
+    shipCache = {};  // Also clear the ship cache
 
     // Correct the bounding box interpretation
     boundingBox = {
@@ -289,16 +269,20 @@ app.get('/api/setBoundingBox', (req, res) => {
     };
 
     console.log('Updated bounding box:', boundingBox);
+    console.log('Cleared ship position history');
 
     // Re-subscribe to AIS with the corrected bounding box
     subscribeToAIS(socket);
     res.json({ success: true, boundingBox });
 });
 
-// Add this to your existing app.js routes
+// Also clear history on resubscribe
 app.get('/api/resubscribe', (req, res) => {
     try {
         if (boundingBox) {
+            shipsData = [];
+            shipPositionHistory = {};  // Add this line
+            shipCache = {};  // Add this line
             subscribeToAIS(socket);
             res.json({ success: true, message: 'Resubscribed to AIS' });
         } else {
@@ -307,6 +291,27 @@ app.get('/api/resubscribe', (req, res) => {
     } catch (error) {
         res.status(500).json({ success: false, message: error.toString() });
     }
+});
+
+// Add this GET endpoint to handle legacy calls
+app.get('/api/setBoundingBox', (req, res) => {
+    const { neLat, neLng, swLat, swLng } = req.query;  // Use query params for GET
+
+    // Clear existing ships data and position history
+    shipsData = [];
+    shipPositionHistory = {};
+    shipCache = {};
+
+    boundingBox = {
+        nw: { lat: parseFloat(neLat), lng: parseFloat(swLng) },
+        se: { lat: parseFloat(swLat), lng: parseFloat(neLng) }
+    };
+
+    console.log('Updated bounding box:', boundingBox);
+    console.log('Cleared ship position history');
+
+    subscribeToAIS(socket);
+    res.json({ success: true, boundingBox });
 });
 
 // Start the server
