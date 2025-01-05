@@ -1,6 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        document.body.style.zoom = "80%";
+    });
+    </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Incoming Ships</title>
@@ -27,26 +32,55 @@
           place-items: center;
       }
       .dashboard-header {
-  display: flex;
-  justify-content: left;  /* Align items on both sides */
-  align-items: center;             /* Vertically align items */
-  width: 100%;                     /* Ensure full width */
-  margin-bottom: 10px;             /* Add some spacing below the headers */
-}
-h2 {
-      font-family: 'Quantico';
-      font-size: 16px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        width: 100%;
+        padding: 1rem 0;
+        margin-bottom: 1rem;
+      }
+      h1 {
+        font-family: 'Quantico';
+      font-size: clamp(24px, 4vw, 36px);
       color: white;
       text-align: center;
-      width: 100%;
-      margin-top: 70px;
-      margin-bottom: -40px;
+      margin: 3rem 0 1rem 0;  /* Add margin-top of 3rem (48px) */
     }
 
-.header {
-  font-size: 18px;
-  font-weight: bold;
-  width: 1350px;
+    h2 {
+      font-family: Helvetica;
+      font-weight: lighter;
+      line-height: 1.6;
+      width: 90vw;
+      max-width: 900px;
+      margin: 0 auto;
+      color: white;
+      text-align: center;
+    }
+
+    .header {
+      font-family: 'Quantico';
+      color: white;
+      font-size: 1.2rem;
+      padding: 0 1rem;
+    }
+
+    /* Split-flap board cell sizing */
+.character {
+    width: 30px;  /* Adjust this value as needed */
+    height: 40px; /* Adjust this value as needed */
+}
+
+.group.flight {  /* Vessel Name column */
+    width: 60%;
+}
+
+.group.city {   /* Type column */
+    width: 30%;
+}
+
+.group.status { /* Under Way column */
+    width: 10%;
 }
 
 .toggle-container {
@@ -112,55 +146,155 @@ input#sea:checked ~ .slider {
   left: 50%;
 }
 
+#map {
+    width: 90vw;
+    max-width: 1350px;
+    height: 70vh;
+    margin: 2rem auto;
+    position: relative;  /* Make sure this is here */
+}
+#board {
+    width: 90vw;
+    max-width: 1350px;
+    margin: 2rem auto;
+    padding: 0;
+    background-color: black;
+}
 
+#loadingOverlay {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgb(0, 0, 0, 0.8);
+    padding: 30px;
+    border-radius: 10px;
+    text-align: center;
+    z-index: 1000;
+    width: 80%;
+    max-width: 300px;
+}
+
+#loadingSpinner {
+    width: 50px;
+    height: 50px;
+    margin: 0 auto 20px;
+}
+
+#loadingMessage, #noDataMessage {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+}
+
+#loadingMessage h2, #noDataMessage h2 {
+    width: 100%;
+    text-align: center;
+    color: #ffffff;
+    font-size: 1.5rem;
+    margin: 0 0 10px 0;
+    font-family: 'Quantico';
+}
+
+#loadingMessage p, #noDataMessage p {
+    width: 100%;
+    text-align: center;
+    color: #cccccc;
+    margin: 0 0 5px 0;
+    font-size: 0.6rem;
+}
+
+#loadingMessage p:last-child, #noDataMessage p:last-child {
+    color: #888888;
+    font-size: 0.6rem;
+}
+
+#noDataMessage {
+    display: none;
+}
+
+/* Media queries for mobile */
+@media screen and (max-width: 768px) {
+    #board {
+        display: none; /* Hide the dashboard on mobile */
+    }
+
+    
+    h1 {
+      margin-top: 4rem;  /* A bit more space on mobile to account for back button */
+    }
+
+    h2 {
+        font-size: 14px;
+        line-height: 1.4;
+        padding: 0 1rem;
+    }
+
+    #loadingOverlay {
+        width: 70%;
+        padding: 20px;
+    }
+
+    #loadingMessage h2, #noDataMessage h2 {
+        font-size: 1.2rem;
+    }
+    #loadingMessage p, #noDataMessage p {
+        font-size: 0.7rem;  /* even smaller text on mobile */
+    }
+}
   </style>
 
 </head>
 <body>
   <!-- Add a div to hold the map -->
 
-<!-- Replace your current loading overlay with this one -->
- <h2 style="width: 1300px;">ships use AIS to make others aware of their positions, broadcasting location every few seconds, and information about the vessel every few minutes. view nearby vessels as they broadcast in realtime below. </h1>
+ <h1>MARINE TRAFFIC</h1>
+ <h2>Ships broadcast AIS messages to make others aware of their positions. They share location every few seconds, and information about the vessel every few minutes. View nearby vessels as they broadcast in realtime below. </h2>
 <div class="button-container">
   <button class="back-button" onclick="window.location.href='index.html'">← back</button>
 </div>
-<div id="map" style="width: 1350px; height: 600px; margin-top: 75px; position: relative;">
+<div id="map">
   <!-- Updated loading overlay with two message states -->
-  <div id="loadingOverlay" style="display: none; position: fixed; top: 25%; left: 50%; transform: translate(-50%, -50%); background: rgb(0, 0, 0, 0.8); padding: 30px; border-radius: 10px; text-align: center; z-index: 1000; min-width: 300px;">
-    <div style="display: flex; flex-direction: column; align-items: center; gap: 15px;">
-        <!-- Loading Spinner Container -->
-        <div id="loadingSpinner" style="width: 50px; height: 50px;">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 50 50">
-                <circle cx="25" cy="25" r="20" fill="none" stroke="#cccccc" stroke-width="5"/>
-                <circle cx="25" cy="25" r="20" fill="none" stroke="#666666" stroke-width="5" stroke-dasharray="60 120">
-                    <animateTransform
-                        attributeName="transform"
-                        attributeType="XML"
-                        type="rotate"
-                        from="0 25 25"
-                        to="360 25 25"
-                        dur="1s"
-                        repeatCount="indefinite"/>
-                </circle>
-            </svg>
-        </div>
-        <!-- Initial Loading Message -->
-        <div id="loadingMessage" style="display: flex; flex-direction: column; align-items: center; gap: 5px;">
-            <h2 style="font-size: 1.5rem; margin: 0; color: #ffffff;">Loading Ships...</h2>
-            <p style="margin: 0; color: #cccccc;">Receiving AIS signals from ships in the area</p>
-            <p style="font-size: 0.875rem; margin: 0; color: #888888;">This may take a few seconds as ships broadcast their positions</p>
-        </div>
-        <!-- No Data Message (initially hidden) -->
-        <div id="noDataMessage" style="display: none; flex-direction: column; align-items: center; gap: 5px;">
-            <h2 style="font-size: 1.5rem; margin: 0; color: #ffffff;">No AIS Data Detected</h2>
-            <p style="margin: 0; color: #cccccc;">No ships found broadcasting AIS signals in this area</p>
-            <p style="font-size: 0.875rem; margin: 0; color: #888888;">Try selecting a different area</p>
-        </div>
+  <div id="loadingOverlay">
+    <!-- Loading Spinner Container -->
+    <div id="loadingSpinner">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 50 50">
+            <circle cx="25" cy="25" r="20" fill="none" stroke="#cccccc" stroke-width="5"/>
+            <circle cx="25" cy="25" r="20" fill="none" stroke="#666666" stroke-width="5" stroke-dasharray="60 120">
+                <animateTransform
+                    attributeName="transform"
+                    attributeType="XML"
+                    type="rotate"
+                    from="0 25 25"
+                    to="360 25 25"
+                    dur="1s"
+                    repeatCount="indefinite"/>
+            </circle>
+        </svg>
+    </div>
+
+    <!-- Initial Loading Message -->
+    <div id="loadingMessage">
+        <h2>Loading Ships...</h2>
+        <p>Recieving AIS messages from vessels in this area</p>
+        <p>This may take a few seconds as ships broadcast their positions</p>
+    </div>
+
+    <!-- No Data Message -->
+    <div id="noDataMessage">
+        <h2>No AIS Data Detected</h2>
+        <p>No ships found broadcasting AIS signals in this area</p>
+        <p>Try selecting a different area</p>
     </div>
 </div>
 </div>
 
-<!-- Add this style to your header or in a <style> tag -->
 <style>
 @keyframes spin {
   0% { transform: rotate(0deg); }
@@ -176,7 +310,6 @@ input#sea:checked ~ .slider {
     font-size: 16px;
     cursor: pointer;
     transition: all 0.3s ease;
-    text-transform: uppercase;
     letter-spacing: 1px;
     position: absolute;
     left: 20px;
