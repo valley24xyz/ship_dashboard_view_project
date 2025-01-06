@@ -7,8 +7,7 @@
     });
     </script>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Ship Traffic</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">  <title>Ship Traffic</title>
   <link rel="icon" type="image/x-icon" href="favicon.ico">
   <link rel="stylesheet" href="css/base.css" />
   
@@ -40,6 +39,7 @@
       margin: 0;
       font-family: Arial, sans-serif;
     }
+
     #map {
       width: 90vw;
       max-width: 1800px;
@@ -90,18 +90,18 @@
     }
 
     .back-button {
-    font-family: 'Quantico';
-    background-color: #1a1a1a;
-    color: #ffffff;
-    border: 2px solid #333333;
-    padding: 8px 16px;
-    font-size: 16px;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    letter-spacing: 1px;
-    position: absolute;
-    left: 20px;
-    top: 20px;
+      font-family: 'Quantico';
+      background-color: #1a1a1a;
+      color: #ffffff;
+      border: 2px solid #333333;
+      padding: 8px 16px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      letter-spacing: 1px;
+      position: absolute;
+      left: 20px;
+      top: 20px;
 }
 
 .back-button:hover {
@@ -178,7 +178,7 @@
 <body>
   <button class="back-button" onclick="clearRectangle()">← back</button>
   <div class="content-wrapper">
-  <h1>draw a rectangle on the map to view maritime traffic in an area.</h1>
+  <h1>click the square icon to draw a rectangle on the map and view maritime traffic in that area.</h1>
   <!-- Map Container -->
   <div id="map"></div>
 <!-- Add this button below the map -->

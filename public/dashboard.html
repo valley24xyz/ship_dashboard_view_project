@@ -3,7 +3,7 @@
 <head>
   <script>
     document.addEventListener('DOMContentLoaded', function() {
-        document.body.style.zoom = "80%";
+        document.body.style.zoom = "70%";
     });
     </script>
     <meta charset="UTF-8">
@@ -11,26 +11,59 @@
     <title>Incoming Ships</title>
     <link rel="icon" type="image/x-icon" href="favicon.ico">
     <link rel="stylesheet" href="css/base.css" />
-
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Share+Tech&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Quantico&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
-
-
-
-    <!-- MAP -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
     <script src="https://rawgit.com/bbecquet/Leaflet.RotatedMarker/master/leaflet.rotatedMarker.js"></script>
-    <!--ESRI LEAFLET PLUGIN-->
     <script src="https://unpkg.com/esri-leaflet"></script>
     <style>
       html, body {
           display: grid;
           place-items: center;
       }
+
+      .dashboard-container {
+        display: grid;
+        grid-template-columns: 1fr 1fr;  /* Two equal columns */
+        gap: 20px;
+        max-width: 1800px;  /* Increased from his 1200px to match your current sizing */
+        width: 100%;
+        align-items: start;  /* Aligns items to top */
+        margin: 0 auto;
+      }
+
+
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+
+.back-button {
+    font-family: 'Quantico', sans-serif;
+    background-color: #1a1a1a;
+    color: #ffffff;
+    border: 2px solid #333333;
+    padding: 8px 16px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    letter-spacing: 1px;
+    position: absolute;
+    left: 20px;
+    top: 20px;
+}
+
+.back-button:hover {
+    background-color: #333333;
+    border-color: #444444;
+    box-shadow: 0 0 10px rgba(51, 51, 51, 0.5);
+}
+
+.back-button:active {
+    transform: translateY(1px);
+}
       .dashboard-header {
         display: flex;
         justify-content: space-between;
@@ -72,7 +105,7 @@
 }
 
 .group.flight {  /* Vessel Name column */
-    width: 60%;
+    width: 45%;
 }
 
 .group.city {   /* Type column */
@@ -83,82 +116,16 @@
     width: 10%;
 }
 
-.toggle-container {
-  display: flex;
-  margin-bottom: 8px;
-  align-items: center;
-  justify-content: flex-end;       /* Align the toggle to the right */
-  width: 200px;                    /* Adjust as necessary for alignment */
-}
-
-.toggle-switch {
-  position: relative;
-  display: inline-block;
-  width: 120px;
-  height: 40px;
-  background-color: #f1f1f1;
-  border-radius: 25px;
-  box-shadow: inset 0 0 5px rgba(0,0,0,0.2);
-}
-
-.toggle-switch input {
-  display: none;
-}
-
-.toggle-switch .labels {
-  display: flex;
-  justify-content: space-between;
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 1;  /* This ensures the text is on top */
-}
-
-.toggle-switch .labels label {
-  flex: 1;
-  line-height: 40px;
-  text-align: center;
-  font-weight: bold;
-  cursor: pointer;
-  color: #666;
-}
-
-.toggle-switch input#air:checked ~ .labels label[for="air"],
-.toggle-switch input#sea:checked ~ .labels label[for="sea"] {
-  color: white;
-}
-
-.toggle-switch .slider {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 50%;
-  height: 100%;
-  background-color: #333;
-  border-radius: 25px;
-  transition: 0.3s;
-  z-index: 0;  /* Slider behind the text */
-}
-
-input#sea:checked ~ .slider {
-  left: 50%;
-}
-
 #map {
-    width: 90vw;
-    max-width: 1350px;
-    height: 70vh;
-    margin: 2rem auto;
-    position: relative;  /* Make sure this is here */
+    width: min(800px, 90vw);    /* Larger than his 540px to match your scale */
+    height: min(600px, 70vh);   /* Keep your current aspect ratio */
+    background: black;
+    margin: 2rem 0;
 }
 #board {
-    width: 90vw;
-    max-width: 1350px;
-    margin: 2rem auto;
-    padding: 0;
-    background-color: black;
+    transform: scale(0.7);          /* Adjust scale as needed */
+    transform-origin: top left;
+    margin-left: 0;    
 }
 
 #loadingOverlay {
@@ -220,6 +187,18 @@ input#sea:checked ~ .slider {
 }
 
 /* Media queries for mobile */
+
+@media screen and (max-width: 1100px) {
+    .dashboard-container {
+        grid-template-columns: 1fr;  /* Stack vertically on mobile */
+        justify-items: center;       /* Center items */
+    }
+
+    #board {
+        transform: scale(0.5);      /* Smaller on mobile */
+        margin: -100px auto 0;      /* Center the board and reduce gap */
+    }
+}
 @media screen and (max-width: 768px) {
     #board {
         display: none; /* Hide the dashboard on mobile */
@@ -249,21 +228,17 @@ input#sea:checked ~ .slider {
     }
 }
   </style>
-
 </head>
 <body>
-  <!-- Add a div to hold the map -->
-
+  <div class="button-container">
+    <button class="back-button" onclick="window.location.href='index.html'">← back</button>
+  </div>
  <h1>MARINE TRAFFIC</h1>
  <h2>Ships broadcast AIS messages to make others aware of their positions. They share location every few seconds, and information about the vessel every few minutes. View nearby vessels as they broadcast in realtime below. </h2>
-<div class="button-container">
-  <button class="back-button" onclick="window.location.href='index.html'">← back</button>
-</div>
-<div id="map">
-  <!-- Updated loading overlay with two message states -->
-  <div id="loadingOverlay">
-    <!-- Loading Spinner Container -->
-    <div id="loadingSpinner">
+ <div class = "dashboard-container">
+  <div id="map">
+    <div id="loadingOverlay">
+      <div id="loadingSpinner">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 50 50">
             <circle cx="25" cy="25" r="20" fill="none" stroke="#cccccc" stroke-width="5"/>
             <circle cx="25" cy="25" r="20" fill="none" stroke="#666666" stroke-width="5" stroke-dasharray="60 120">
@@ -277,97 +252,30 @@ input#sea:checked ~ .slider {
                     repeatCount="indefinite"/>
             </circle>
         </svg>
-    </div>
-
-    <!-- Initial Loading Message -->
-    <div id="loadingMessage">
+      </div>
+      <!-- Initial Loading Message -->
+      <div id="loadingMessage">
         <h2>Loading Ships...</h2>
         <p>Recieving AIS messages from vessels in this area</p>
         <p>This may take a few seconds as ships broadcast their positions</p>
-    </div>
-
-    <!-- No Data Message -->
-    <div id="noDataMessage">
+      </div>
+      <!-- No Data Message -->
+      <div id="noDataMessage">
         <h2>No AIS Data Detected</h2>
         <p>No ships found broadcasting AIS signals in this area</p>
         <p>Try selecting a different area</p>
-    </div>
-</div>
-</div>
-
-<style>
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-.back-button {
-    font-family: 'Quantico', sans-serif;
-    background-color: #1a1a1a;
-    color: #ffffff;
-    border: 2px solid #333333;
-    padding: 8px 16px;
-    font-size: 16px;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    letter-spacing: 1px;
-    position: absolute;
-    left: 20px;
-    top: 20px;
-}
-
-.back-button:hover {
-    background-color: #333333;
-    border-color: #444444;
-    box-shadow: 0 0 10px rgba(51, 51, 51, 0.5);
-}
-
-.back-button:active {
-    transform: translateY(1px);
-}
-</style>
-<!-- ============================================ -->
-<!-- TOGGLE -->
-<!-- ============================================ -->
-
-<!-- ============================================ -->
-    <!-- ============================================ -->
-    <!-- ROW TEMPLATE -->
-     <!-- Add a container for the split-flap board -->
-     <div id="board" class="chartContainer splitflap" style="margin-left:50px">
-      <div class="dashboard-header">
-        <div class="header" style="width: 780px; text-align: left; font-family: 'Quantico'">Vessel Name</div>
-        <div class="header" style="width: 380px; text-align: left; font-family: 'Quantico">Type</div>
-        <div class="header" style="width: 200px; text-align: right; font-family: 'Quantico">Under Way</div>
-        <!-- toggle switch  -->
-        <!--
-       <div class="toggle-container">
-          <div class="toggle-switch">
-            <input type="radio" id="air" name="toggle" checked onchange="toggleDashboard()">
-            <input type="radio" id="sea" name="toggle" onchange="toggleDashboard()">
-
-            <div class="labels">
-              <label for="air">Air</label>
-              <label for="sea">Sea</label>
-          </div>
-
-    <span class="slider"></span>
-  </div>
-
-        </div>
-      
       </div>
-      
-    END CONTAINER -->
-    <!-- ============================================ -->
-    <!-- ROW TEMPLATE -->
+    </div> <!--close loading overlay-->
+</div> <!--close map-->
+  <div id="board" class="chartContainer splitflap" style="margin-left:50px">
+    <div class="dashboard-header">
+      <div class="header" style="width: 50%; text-align: left; font-family: 'Quantico'">Vessel Name</div>
+      <div class="header" style="width: 50%; text-align: left; margin-left: -100px; font-family: 'Quantico'">Type</div>
+
+    </div> <!--close dashboard header-->
     <script type="text/template" id="row_template">
       <div class="row">
         <div class="group flight"> <!-- ship number -->
-          <div class="character"><span></span></div>
-          <div class="character"><span></span></div>
-          <div class="character"><span></span></div>
-          <div class="character"><span></span></div>
           <div class="character"><span></span></div>
           <div class="character"><span></span></div>
           <div class="character"><span></span></div>
@@ -405,19 +313,15 @@ input#sea:checked ~ .slider {
           <div class="character"><span></span></div>
           <div class="character"><span></span></div>
           <div class="character"><span></span></div>
-          <div class="character"><span></span></div>
-          <div class="character"><span></span></div>
-          <div class="character"><span></span></div>
+
         </div>
         <div class="group status"> <!-- lights -->
           <div class="sA"></div>
           <div class="sB"></div>
         </div>
-      </div>
+      </div> <!--close rows-->
     </script>
-    <!-- END ROW TEMPLATE -->
-    <!-- ============================================ -->
-
+    </div> <!--close dashboard container-->
     <!-- ============================================ -->
     <!-- JS LIBRARIES -->
     <script
@@ -433,7 +337,6 @@ input#sea:checked ~ .slider {
       src="https://cdnjs.cloudflare.com/ajax/libs/backbone.js/1.3.3/backbone-min.js"
     ></script>
     <script type="text/javascript" src="js/split-flap.js"></script>
-
     <!-- ============================================ -->
     <!-- CUSTOM JS FOR THIS BOARD -->
     <script type="text/javascript" src="plugins/arrivals/custom.js"></script>
@@ -444,14 +347,10 @@ input#sea:checked ~ .slider {
         plugin: 'arrivals', // Plugin to load
         container: $('#board'), // Where in the DOM to put the board
         template: $('#row_template'), // Where in the DOM to find the row template
-        numRows: 12, // number of rows
-
-        // OPTIONAL
-//        sort: 'gate', // the column to sort by
-//        order: 'asc', // the order to sort by
-        maxResults: 12, // number of items to retrieve from service
-        pageInterval: 5000, // delay between pages (ms)
-        stagger: 1000 // delay between loading rows (ms)
+        numRows: 13, // number of rows
+        maxResults: 26, // number of items to retrieve from service
+        pageInterval: 10000, // delay between pages (ms)
+        stagger: 000 // delay between loading rows (ms)
       };
 
       $(document).ready(function() {
@@ -529,7 +428,6 @@ window.boundingBox = { neLat, neLng, swLat, swLng };
 }
 // Call this function after setting window.boundingBox
 setBoundingBoxOnServer();
-
   </script>
   </body>
 </html>
