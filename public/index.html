@@ -16,8 +16,9 @@
   <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
   
   <!-- Leaflet Draw CSS and JS -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+  
+ <!-- <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script> -->
   
   <script src="https://rawgit.com/bbecquet/Leaflet.RotatedMarker/master/leaflet.rotatedMarker.js"></script>
   <!-- ESRI Leaflet Plugin -->
@@ -178,7 +179,7 @@
 <body>
   <button class="back-button" onclick="clearRectangle()">← back</button>
   <div class="content-wrapper">
-  <h1>click the square icon to draw a rectangle on the map and view maritime traffic in that area.</h1>
+  <h1>zoom in on the map to view maritime traffic in an area</h1>
   <!-- Map Container -->
   <div id="map"></div>
 <!-- Add this button below the map -->
@@ -196,9 +197,9 @@
       maxZoom: 18
     }).addTo(map);
   
-    var drawnItems = new L.FeatureGroup();
+/*  var drawnItems = new L.FeatureGroup();
     map.addLayer(drawnItems);
-  
+
     var drawControl = new L.Control.Draw({
     draw: {
       rectangle: {
@@ -232,22 +233,34 @@
         console.log('SouthWest:', southWest.lat, southWest.lng);
       }
     });
-  
+  */
+    // Enable the dashboard button only when zoomed in enough
+    map.on('zoomend', function() {
+      const button = document.getElementById('goToDashboard');
+      const currentZoom = map.getZoom();
+      button.disabled = currentZoom < 10;
+      
+      if (currentZoom < 10) {
+        button.title = 'Please zoom in closer to select an area';
+      } else {
+        button.title = 'Click to view ships in this area';
+      }
+    });
     // Add event listener to the button
     document.getElementById('goToDashboard').addEventListener('click', function () {
-      if (bounds) {
-        // Get the coordinates from the bounds
-        var northEast = bounds.getNorthEast();
-        var southWest = bounds.getSouthWest();
-  
-        // Construct the URL with query parameters
-        var url = `dashboard.html?neLat=${northEast.lat}&neLng=${northEast.lng}&swLat=${southWest.lat}&swLng=${southWest.lng}`;
-        
-        // Redirect to dashboard.html with the coordinates
-        window.location.href = url;
-      } else {
-        alert('Please draw a rectangle first to select an area.');
+      if (map.getZoom() < 10) {
+        alert('Please zoom in closer to select a smaller area');
+        return;
       }
+
+      var bounds = map.getBounds();
+      var zoom = map.getZoom();
+      var center = bounds.getCenter();
+      var northEast = bounds.getNorthEast();
+      var southWest = bounds.getSouthWest();
+      
+      var url = `dashboard.html?neLat=${northEast.lat}&neLng=${northEast.lng}&swLat=${southWest.lat}&swLng=${southWest.lng}&zoom=${zoom}`;
+      window.location.href = url;
     });
 
     function clearRectangle() {

@@ -277,7 +277,7 @@ app.get('/api/arrivals', (req, res) => {
 
 // API route to update bounding box dynamically
 app.get('/api/setBoundingBox', (req, res) => {
-    const { neLat, neLng, swLat, swLng } = req.query;
+    const { neLat, neLng, swLat, swLng, zoom } = req.query;  // Add zoom to destructuring
 
     // Clear existing ships data when bounding box changes
     shipsData = [];  // Add this line

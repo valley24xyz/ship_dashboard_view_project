@@ -114,25 +114,33 @@ function clearAllShipData() {
 document.addEventListener("DOMContentLoaded", function() {
   console.log('DOM Content Loaded - Starting initialization');
 
-    // Access the bounding box coordinates from the global `window.boundingBox`
+    // Access the bounding box coordinates and zoom from the global `window.boundingBox`
     var boundingBox = window.boundingBox;
-    var neLat = boundingBox ? parseFloat(boundingBox.neLat) : null;
-    var neLng = boundingBox ? parseFloat(boundingBox.neLng) : null;
-    var swLat = boundingBox ? parseFloat(boundingBox.swLat) : null;
-    var swLng = boundingBox ? parseFloat(boundingBox.swLng) : null;
+    // Remove quotes and parse coordinates
+    var neLat = boundingBox ? parseFloat(boundingBox.neLat.replace(/['"]+/g, '')) : null;
+    var neLng = boundingBox ? parseFloat(boundingBox.neLng.replace(/['"]+/g, '')) : null;
+    var swLat = boundingBox ? parseFloat(boundingBox.swLat.replace(/['"]+/g, '')) : null;
+    var swLng = boundingBox ? parseFloat(boundingBox.swLng.replace(/['"]+/g, '')) : null;
+    var zoom = boundingBox && boundingBox.zoom ? parseInt(boundingBox.zoom.replace(/['"]+/g, '')) : 3;
 
-    // Calculate the center of the bounding box
-    var centerLat = (neLat + swLat) / 2;
-    var centerLng = (neLng + swLng) / 2;
+    // Calculate the center of the bounding box with fallback
+    var centerLat = 39.8283;  // Default to center of US
+    var centerLng = -98.5795;
+
+    if (!isNaN(neLat) && !isNaN(swLat) && !isNaN(neLng) && !isNaN(swLng)) {
+        centerLat = (neLat + swLat) / 2;
+        centerLng = (neLng + swLng) / 2;
+    }
+
+    console.log('Map initialization with:', { centerLat, centerLng, zoom });
 
   // Initialize the map
- map = L.map('map', {
-    center: [centerLat, centerLng],  // Center the map using the midpoint
-    zoom: 13,
-    zoomControl: false,  // Disable the default zoom controls
-    attributionControl: false  // Disable the attribution control
-
-  });
+  map = L.map('map', {
+    center: [centerLat, centerLng],  
+    zoom: zoom,  // This should be using the zoom variable
+    zoomControl: false,
+    attributionControl: false
+});
   // Set up the dark mode map tiles
 
   const darkTileLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
@@ -153,25 +161,27 @@ document.addEventListener("DOMContentLoaded", function() {
    // const blueBoundingBox = L.rectangle(blueBounds, { color: "#0000FF", weight: 2 }).addTo(map);  // Blue box
    // blueBoundingBox.bindPopup("Blue Tracking Area");
 
-  // If bounding box coordinates are available, draw the bounding box on the map
-  if (neLat && neLng && swLat && swLng) {
+ // If bounding box coordinates are available, set up the map view
+ if (neLat && neLng && swLat && swLng) {
     initialDataReceived = false;
     try {
         const loadingOverlay = document.getElementById('loadingOverlay');
         if (loadingOverlay) {
             loadingOverlay.style.display = 'flex';
-            resetLoadingMessage(); // Reset to initial loading message
-            startLoadingTimeout(); // Start the timeout
+            resetLoadingMessage();
+            startLoadingTimeout();
         }
     } catch (error) {
         console.error('Error showing loading overlay:', error);
     }
     
-    const bounds = [[swLat, swLng], [neLat, neLng]];
-    boundingBoxLayer = L.rectangle(bounds, { color: "#FFFF00", weight: 2 }).addTo(map);
-    boundingBoxLayer.bindPopup("Selected Tracking Area");
+    // Set the bounds after initializing the map
+    const bounds = L.latLngBounds(
+        [swLat, swLng],
+        [neLat, neLng]
+    );
     map.fitBounds(bounds);
-}
+  }
 
   // Debug map initialization
   console.log('Map container:', document.getElementById('map'));

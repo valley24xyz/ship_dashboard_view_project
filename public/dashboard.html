@@ -3,7 +3,7 @@
 <head>
   <script>
     document.addEventListener('DOMContentLoaded', function() {
-        document.body.style.zoom = "70%";
+        document.body.style.zoom = "75%";
     });
     </script>
     <meta charset="UTF-8">
@@ -370,6 +370,7 @@
 
   // Use the query parameters and make them global
   var params = getQueryParams();
+  var zoom = params.zoom;
   var neLat = params.neLat;
   var neLng = params.neLng;
   var swLat = params.swLat;
@@ -383,7 +384,7 @@
 
 
 // Make these variables available globally for custom.js 
-window.boundingBox = { neLat, neLng, swLat, swLng };
+window.boundingBox = { neLat, neLng, swLat, swLng, zoom };  // Include zoom here
 
   // Make these variables available globally for custom.js and app.js
   window.boundingBox = { neLat, neLng, swLat, swLng };
