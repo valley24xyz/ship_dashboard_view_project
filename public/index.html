@@ -42,11 +42,11 @@
     }
 
     #map {
-      width: 90vw;
-      max-width: 1800px;
-      height: 90vh;
-      max-height: 1000px;
-      margin: 0 auto 2rem auto;
+      width: 100vw;
+      /*max-width: 1800px;*/
+      height: 100vh;
+      /* max-height: 1000px; */
+      /*margin: 0 auto 2rem auto;*/
       background-color: black;
     }
 
@@ -75,10 +75,13 @@
     }
 
     .header-container {
-    width: 90vw;
-    max-width: 1800px;
-    margin: 0 auto;
-    padding: 1rem 0;
+      width: 100vw;
+      margin: 0 auto;
+      padding: 1rem 0;
+      background-color: black;
+      position: fixed;
+      top: 0;
+      z-index:1001;
     }
 
     h1 {
@@ -116,11 +119,45 @@
 }
 
 .content-wrapper {
-    padding-top: 60px; /* Give space for the absolute positioned back button */
-    width: 90vw;
-    max-width: 1800px;
+    padding-top: 0px; /* Give space for the absolute positioned back button */
+    width: 100vw;
+   /* max-width: 1800px; */
     margin: 0 auto;
 }
+
+.footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background-color: rgba(0, 0, 0, 0.8);
+  padding: 20px;
+  text-align: center;
+  backdrop-filter: blur(5px);
+  z-index: 1001; 
+}
+
+#goToDashboard {
+  font-size: 18px;
+  padding: 12px 30px;
+  background-color: #333;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+#goToDashboard:hover {
+  background-color: #444;
+}
+
+#goToDashboard:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+
 @media screen and (max-width: 768px) {
     .back-button {
         position: absolute;  /* Keep it absolute */
@@ -131,14 +168,14 @@
     }
 
     .header-container {     /* Add this block */
-        width: 90vw;
+        width: 100vw;
         text-align: center;  /* Keep text centered */
         padding-top: 4rem; 
     }
 
     /* Add these for the full-width container with left-aligned content */
         html, body {
-        padding: 0 20px;  /* Add some padding on the sides */
+        padding: 0;
     }
 
     .dashboard-button {
@@ -156,8 +193,7 @@
     }
 
     #map {
-        height: 70vh;
-        margin-bottom: 1rem;
+        height: 100vh;
     }
 
     h1 {                   /* Add this block */
@@ -177,14 +213,18 @@
   </style>
 </head>
 <body>
-  <button class="back-button" onclick="clearRectangle()">← back</button>
+  <div class ="header-container">
+    <button class="back-button" onclick="clearRectangle()">← back</button>
+    <h1>zoom in on the map to view maritime traffic in an area</h1>
+  </div>
   <div class="content-wrapper">
-  <h1>zoom in on the map to view maritime traffic in an area</h1>
-  <!-- Map Container -->
-  <div id="map"></div>
-<!-- Add this button below the map -->
-<button id="goToDashboard" class="dashboard-button">view traffic</button>
-</div>
+    <!-- Map Container -->
+    <div id="map"></div>
+    <!-- Add this button below the map -->
+    <div class = "footer">
+      <button id="goToDashboard" class="dashboard-button">view traffic</button>
+    </div>
+  </div>
   <!-- Custom JS for Map Setup -->
   <script>
     var map = L.map('map', {
@@ -259,8 +299,7 @@
       var northEast = bounds.getNorthEast();
       var southWest = bounds.getSouthWest();
       
-      var url = `dashboard.html?neLat=${northEast.lat}&neLng=${northEast.lng}&swLat=${southWest.lat}&swLng=${southWest.lng}&zoom=${zoom}`;
-      window.location.href = url;
+      var url = `dashboard.html?neLat=${northEast.lat}&neLng=${northEast.lng}&swLat=${southWest.lat}&swLng=${southWest.lng}&zoom=${map.getZoom()}`;      window.location.href = url;
     });
 
     function clearRectangle() {
