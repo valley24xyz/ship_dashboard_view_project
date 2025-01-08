@@ -10,20 +10,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">  <title>Ship Traffic</title>
   <link rel="icon" type="image/x-icon" href="favicon.ico">
   <link rel="stylesheet" href="css/base.css" />
-  
-  <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
-  
-  <!-- Leaflet Draw CSS and JS -->
-  
- <!-- <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script> -->
-  
   <script src="https://rawgit.com/bbecquet/Leaflet.RotatedMarker/master/leaflet.rotatedMarker.js"></script>
-  <!-- ESRI Leaflet Plugin -->
   <script src="https://unpkg.com/esri-leaflet"></script>
-
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Share+Tech&display=swap" rel="stylesheet">
@@ -43,10 +33,7 @@
 
     #map {
       width: 100vw;
-      /*max-width: 1800px;*/
       height: 100vh;
-      /* max-height: 1000px; */
-      /*margin: 0 auto 2rem auto;*/
       background-color: black;
     }
 
@@ -60,7 +47,7 @@
       cursor: pointer;
       transition: all 0.3s ease;
       letter-spacing: 1px;
-      display: block;          /* Add this */
+      display: block;
       margin: 20px auto;  
     }
 
@@ -86,7 +73,7 @@
 
     h1 {
     font-family: 'Quantico';
-    font-size: clamp(18px, 3vw, 30px);  /* Responsive font size */
+    font-size: clamp(18px, 3vw, 30px);
     color: white;
     text-align: center;
     width: 100%;
@@ -119,9 +106,8 @@
 }
 
 .content-wrapper {
-    padding-top: 0px; /* Give space for the absolute positioned back button */
+    padding-top: 0px;
     width: 100vw;
-   /* max-width: 1800px; */
     margin: 0 auto;
 }
 
@@ -160,20 +146,18 @@
 
 @media screen and (max-width: 768px) {
     .back-button {
-        position: absolute;  /* Keep it absolute */
+        position: absolute; 
         font-size: 14px;
         padding: 6px 12px;
-        left: 20px;         /* Position from left edge */
+        left: 20px;   
         top: 20px;  
     }
 
-    .header-container {     /* Add this block */
+    .header-container {
         width: 100vw;
-        text-align: center;  /* Keep text centered */
+        text-align: center;
         padding-top: 4rem; 
     }
-
-    /* Add these for the full-width container with left-aligned content */
         html, body {
         padding: 0;
     }
@@ -188,7 +172,7 @@
       cursor: pointer;
       transition: all 0.3s ease;
       letter-spacing: 1px;
-      display: block;          /* Add this */
+      display: block;   
       margin: 20px auto;  
     }
 
@@ -196,7 +180,7 @@
         height: 100vh;
     }
 
-    h1 {                   /* Add this block */
+    h1 {              
         margin-top: 0;
         font-size: 20px;
         text-align: center;
@@ -220,7 +204,6 @@
   <div class="content-wrapper">
     <!-- Map Container -->
     <div id="map"></div>
-    <!-- Add this button below the map -->
     <div class = "footer">
       <button id="goToDashboard" class="dashboard-button">view traffic</button>
     </div>
@@ -236,45 +219,6 @@
     L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
       maxZoom: 18
     }).addTo(map);
-  
-/*  var drawnItems = new L.FeatureGroup();
-    map.addLayer(drawnItems);
-
-    var drawControl = new L.Control.Draw({
-    draw: {
-      rectangle: {
-        shapeOptions: {
-          color: '#FFFF00',    // Yellow color
-          weight: 2
-        }
-      },
-      polygon: false,
-      polyline: false,
-      circle: false,
-      circlemarker: false,
-      marker: false
-    },
-    edit: false
-  });
-    map.addControl(drawControl);
-  
-    var bounds = null; // Variable to store the rectangle bounds
-  
-    map.on(L.Draw.Event.CREATED, function (e) {
-      var layer = e.layer;
-      drawnItems.addLayer(layer);
-  
-      if (e.layerType === 'rectangle') {
-        bounds = layer.getBounds();
-        var northEast = bounds.getNorthEast();
-        var southWest = bounds.getSouthWest();
-  
-        console.log('NorthEast:', northEast.lat, northEast.lng);
-        console.log('SouthWest:', southWest.lat, southWest.lng);
-      }
-    });
-  */
-    // Enable the dashboard button only when zoomed in enough
     map.on('zoomend', function() {
       const button = document.getElementById('goToDashboard');
       const currentZoom = map.getZoom();
@@ -286,7 +230,6 @@
         button.title = 'Click to view ships in this area';
       }
     });
-    // Add event listener to the button
     document.getElementById('goToDashboard').addEventListener('click', function () {
       if (map.getZoom() < 10) {
         alert('Please zoom in closer to select a smaller area');
@@ -303,13 +246,9 @@
     });
 
     function clearRectangle() {
-    // Clear the drawn items layer
     drawnItems.clearLayers();
-    // Reset the bounds variable
     bounds = null;
 }
-    
   </script>
-  
 </body>
 </html>

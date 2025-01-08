@@ -26,11 +26,11 @@
 
       .dashboard-container {
         display: grid;
-        grid-template-columns: 1fr 1fr;  /* Two equal columns */
+        grid-template-columns: 1fr 1fr;
         gap: 20px;
-        max-width: 1800px;  /* Increased from his 1200px to match your current sizing */
+        max-width: 1800px;
         width: 100%;
-        align-items: start;  /* Aligns items to top */
+        align-items: start;
         margin: 0 auto;
       }
 
@@ -77,7 +77,7 @@
       font-size: clamp(24px, 4vw, 36px);
       color: white;
       text-align: center;
-      margin: 3rem 0 1rem 0;  /* Add margin-top of 3rem (48px) */
+      margin: 3rem 0 1rem 0;
     }
 
     h2 {
@@ -98,10 +98,10 @@
       padding: 0 1rem;
     }
 
-    /* Split-flap board cell sizing */
+  /* Split-flap board cell sizing */
 .character {
-    width: 30px;  /* Adjust this value as needed */
-    height: 40px; /* Adjust this value as needed */
+    width: 30px;
+    height: 40px; 
 }
 
 .group.flight {  /* Vessel Name column */
@@ -117,13 +117,13 @@
 }
 
 #map {
-    width: min(800px, 90vw);    /* Larger than his 540px to match your scale */
-    height: min(600px, 70vh);   /* Keep your current aspect ratio */
+    width: min(800px, 90vw);
+    height: min(600px, 70vh);
     background: black;
     margin: 2rem 0;
 }
 #board {
-    transform: scale(0.7);          /* Adjust scale as needed */
+    transform: scale(0.7);
     transform-origin: top left;
     margin-left: 0;    
 }
@@ -186,27 +186,25 @@
     display: none;
 }
 
-/* Media queries for mobile */
-
 @media screen and (max-width: 1100px) {
     .dashboard-container {
-        grid-template-columns: 1fr;  /* Stack vertically on mobile */
-        justify-items: center;       /* Center items */
+        grid-template-columns: 1fr;
+        justify-items: center;
     }
 
     #board {
-        transform: scale(0.5);      /* Smaller on mobile */
-        margin: -100px auto 0;      /* Center the board and reduce gap */
+        transform: scale(0.5);
+        margin: -100px auto 0;
     }
 }
 @media screen and (max-width: 768px) {
     #board {
-        display: none; /* Hide the dashboard on mobile */
+        display: none;
     }
 
     
     h1 {
-      margin-top: 4rem;  /* A bit more space on mobile to account for back button */
+      margin-top: 4rem;
     }
 
     h2 {
@@ -224,7 +222,7 @@
         font-size: 1.2rem;
     }
     #loadingMessage p, #noDataMessage p {
-        font-size: 0.7rem;  /* even smaller text on mobile */
+        font-size: 0.7rem;
     }
 }
   </style>
@@ -253,13 +251,11 @@
             </circle>
         </svg>
       </div>
-      <!-- Initial Loading Message -->
       <div id="loadingMessage">
         <h2>Loading Ships...</h2>
         <p>Recieving AIS messages from vessels in this area</p>
         <p>This may take a few seconds as ships broadcast their positions</p>
       </div>
-      <!-- No Data Message -->
       <div id="noDataMessage">
         <h2>No AIS Data Detected</h2>
         <p>No ships found broadcasting AIS signals in this area</p>
@@ -322,8 +318,6 @@
       </div> <!--close rows-->
     </script>
     </div> <!--close dashboard container-->
-    <!-- ============================================ -->
-    <!-- JS LIBRARIES -->
     <script
       type="text/javascript"
       src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.js"
@@ -350,7 +344,7 @@
         numRows: 13, // number of rows
         maxResults: 26, // number of items to retrieve from service
         pageInterval: 10000, // delay between pages (ms)
-        stagger: 000 // delay between loading rows (ms)
+        stagger: 1000 // delay between loading rows (ms)
       };
 
       $(document).ready(function() {
@@ -367,26 +361,24 @@
     });
     return params;
   }
-
-  // Use the query parameters and make them global
+  
   var params = getQueryParams();
   var zoom = params.zoom;
   var neLat = params.neLat;
   var neLng = params.neLng;
   var swLat = params.swLat;
   var swLng = params.swLng;
-
-  // Log the parameters for debugging
+  
   console.log('NorthEast Latitude:', neLat);
   console.log('NorthEast Longitude:', neLng);
   console.log('SouthWest Latitude:', swLat);
   console.log('SouthWest Longitude:', swLng);
 
 
-// Make these variables available globally for custom.js 
-window.boundingBox = { neLat, neLng, swLat, swLng, zoom };  // Include zoom here
 
-  // Make these variables available globally for custom.js and app.js
+window.boundingBox = { neLat, neLng, swLat, swLng, zoom };  
+
+  
   window.boundingBox = { neLat, neLng, swLat, swLng };
 
   function setBoundingBoxOnServer() {
@@ -401,14 +393,11 @@ window.boundingBox = { neLat, neLng, swLat, swLng, zoom };  // Include zoom here
         neLat, neLng, swLat, swLng
     });
 
-    // Send the bounding box to the server
     fetch(`/api/setBoundingBox?neLat=${neLat}&neLng=${neLng}&swLat=${swLat}&swLng=${swLng}`)
         .then(response => response.json())
         .then(data => {
             if (data.success) {
                 console.log('Bounding box successfully updated on server:', data.boundingBox);
-                
-                // Wait a short moment before resubscribing
                 setTimeout(() => {
                     fetch('/api/resubscribe')
                         .then(resubResponse => resubResponse.json())
@@ -427,7 +416,6 @@ window.boundingBox = { neLat, neLng, swLat, swLng, zoom };  // Include zoom here
             console.error('Error updating bounding box on server:', error);
         });
 }
-// Call this function after setting window.boundingBox
 setBoundingBoxOnServer();
   </script>
   </body>

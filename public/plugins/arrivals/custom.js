@@ -22,18 +22,10 @@ sf.plugins.arrivals = {
 };
 
 var map;
-// MAP
-// Define shipMarkers outside the event handler
 var shipMarkers = {};
 var shipData = {};
-// Add these at the global level with your other variables
-var shipTrails = {};
-var shipPositions = {}; // Store array of positions for each ship
-const MAX_TRAIL_LENGTH = 20; // Maximum number of positions to keep
 let loadingTimeout = null;
 const LOADING_TIMEOUT_DURATION = 90000; // 90 seconds
-
-
 let initialDataReceived = false; // for loading screen
 
 function calculateDistanceInMiles(lat1, lon1, lat2, lon2) {
@@ -47,10 +39,6 @@ function calculateDistanceInMiles(lat1, lon1, lat2, lon2) {
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
     return R * c;
 }
-
-// Add this temporary test near your function definition
-console.log("Distance test:", calculateDistanceInMiles(42.3601, -71.0589, 42.3601, -71.0590), "miles"); // Should be a very small distance
-console.log("Distance test:", calculateDistanceInMiles(42.3601, -71.0589, 43.3601, -72.0589), "miles"); // Should be many miles
 
 function showNoDataMessage() {
     const loadingSpinner = document.getElementById('loadingSpinner');
@@ -75,12 +63,12 @@ function resetLoadingMessage() {
 }
 
 function startLoadingTimeout() {
-    // Clear any existing timeout
+    // clear any existing timeout
     if (loadingTimeout) {
         clearTimeout(loadingTimeout);
     }
     
-    // Set new timeout
+    // set new timeout
     loadingTimeout = setTimeout(() => {
         if (!initialDataReceived) {
             showNoDataMessage();
@@ -106,25 +94,21 @@ function clearAllMarkers() {
 
 function clearAllShipData() {
     shipMarkers = {};
-    shipTrails = {};
-    shipPositions = {};
     shipData = {};
 }
 
 document.addEventListener("DOMContentLoaded", function() {
   console.log('DOM Content Loaded - Starting initialization');
 
-    // Access the bounding box coordinates and zoom from the global `window.boundingBox`
     var boundingBox = window.boundingBox;
-    // Remove quotes and parse coordinates
     var neLat = boundingBox ? parseFloat(boundingBox.neLat.replace(/['"]+/g, '')) : null;
     var neLng = boundingBox ? parseFloat(boundingBox.neLng.replace(/['"]+/g, '')) : null;
     var swLat = boundingBox ? parseFloat(boundingBox.swLat.replace(/['"]+/g, '')) : null;
     var swLng = boundingBox ? parseFloat(boundingBox.swLng.replace(/['"]+/g, '')) : null;
     var zoom = boundingBox && boundingBox.zoom ? parseInt(boundingBox.zoom.replace(/['"]+/g, '')) : 3;
 
-    // Calculate the center of the bounding box with fallback
-    var centerLat = 39.8283;  // Default to center of US
+    // calculate the center of the bounding box with fallback
+    var centerLat = 39.8283;  // default to center of US
     var centerLng = -98.5795;
 
     if (!isNaN(neLat) && !isNaN(swLat) && !isNaN(neLng) && !isNaN(swLng)) {
@@ -134,34 +118,19 @@ document.addEventListener("DOMContentLoaded", function() {
 
     console.log('Map initialization with:', { centerLat, centerLng, zoom });
 
-  // Initialize the map
+  // initialize the map
   map = L.map('map', {
     center: [centerLat, centerLng],  
-    zoom: zoom,  // This should be using the zoom variable
+    zoom: zoom,  
     zoomControl: false,
     attributionControl: false
 });
-  // Set up the dark mode map tiles
-
+ // dark mode
   const darkTileLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
     maxZoom: 40
     });
-
-  // Add the dark mode tile layer to the map
   darkTileLayer.addTo(map);
 
-      // Draw the yellow bounding box
-   // const bounds = [[37.865543, -122.503163], [37.813665, -122.437426]];  // Upper left and lower right coordinates
-   // const boundingBox = L.rectangle(bounds, { color: "#FFFF00", weight: 2 }).addTo(map);  // Yellow box with stroke weight of 2
-
-   // boundingBox.bindPopup("Tracking Area");
-
-      // Draw the blue bounding box
-   // const blueBounds = [[37.856164, -122.591074], [37.748038, -122.403054]];  // Upper left and lower right coordinates for blue box
-   // const blueBoundingBox = L.rectangle(blueBounds, { color: "#0000FF", weight: 2 }).addTo(map);  // Blue box
-   // blueBoundingBox.bindPopup("Blue Tracking Area");
-
- // If bounding box coordinates are available, set up the map view
  if (neLat && neLng && swLat && swLng) {
     initialDataReceived = false;
     try {
@@ -175,7 +144,6 @@ document.addEventListener("DOMContentLoaded", function() {
         console.error('Error showing loading overlay:', error);
     }
     
-    // Set the bounds after initializing the map
     const bounds = L.latLngBounds(
         [swLat, swLng],
         [neLat, neLng]
@@ -183,12 +151,9 @@ document.addEventListener("DOMContentLoaded", function() {
     map.fitBounds(bounds);
   }
 
-  // Debug map initialization
+  // debug map initialization
   console.log('Map container:', document.getElementById('map'));
   console.log('Initial map object:', map);
-
-  // Function to update the map with ship data
-
 
   function calculateDistanceInMiles(lat1, lon1, lat2, lon2) {
     const R = 3959; // Earth's radius in miles
@@ -201,19 +166,12 @@ document.addEventListener("DOMContentLoaded", function() {
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
     return R * c;
 }
-
-
   function updateMap(shipsData) {
     console.log('Starting map update with:', shipsData);
 
-    // Clear all positions if this is the first data received
-    if (!initialDataReceived && shipsData.length > 0) {
-        shipPositions = {};
-    }
-
     if (!initialDataReceived && shipsData.length > 0) {
         initialDataReceived = true;
-        clearLoadingTimeout(); // Clear the timeout since we got data
+        clearLoadingTimeout(); 
         try {
             const loadingOverlay = document.getElementById('loadingOverlay');
             if (loadingOverlay) {
@@ -223,7 +181,6 @@ document.addEventListener("DOMContentLoaded", function() {
             console.error('Error hiding loading overlay:', error);
         }
     }
-    // Track which ships are still active
     const activeShips = new Set();
     
     shipsData.forEach(function(ship) {
@@ -237,89 +194,7 @@ document.addEventListener("DOMContentLoaded", function() {
     
         if (!isNaN(latitude) && !isNaN(longitude)) {
             try {
-                // Add trail tracking here
-        // Initialize or update position tracking
-        if (!shipPositions[ship.flight]) {
-            shipPositions[ship.flight] = [];
-        }
-
-        // Only use position history if this is the first time we're seeing this ship
-        if (shipPositions[ship.flight].length === 0 && ship.positionHistory && ship.positionHistory.length > 0) {
-            shipPositions[ship.flight] = ship.positionHistory.map(pos => [pos.lat, pos.lng]);
-        }
-
-        // Add the new position
-        shipPositions[ship.flight].push([latitude, longitude]);
-        if (shipPositions[ship.flight].length > MAX_TRAIL_LENGTH) {
-            shipPositions[ship.flight].shift();
-        }
-    
-                // Create or update trail
-                // Inside your updateMap function, where you create/update trails
-                if (shipPositions[ship.flight].length > 1) {
-                    const positions = shipPositions[ship.flight];
-                    const lastPos = positions[positions.length - 1];
-                    const prevPos = positions[positions.length - 2];
-                    const distance = calculateDistanceInMiles(prevPos[0], prevPos[1], lastPos[0], lastPos[1]);
-                    
-                    console.log(`Ship ${ship.flight} - Distance: ${distance.toFixed(3)} miles`);
-                    
-                    // If distance is too large, clear the trail and start fresh
-                    if (distance > 0.1) {
-                        if (shipTrails[ship.flight]) {
-                            shipTrails[ship.flight].line.remove();
-                            shipTrails[ship.flight].dots.forEach(dot => dot.remove());
-                            delete shipTrails[ship.flight];
-                        }
-                        // Reset positions to just the current position
-                        shipPositions[ship.flight] = [[latitude, longitude]];
-                    } else {
-                        // Only create/update trail if distance is reasonable
-                        if (!shipTrails[ship.flight]) {
-                            // Create line trail
-                            const trail = L.polyline(shipPositions[ship.flight], {
-                                color: '#4BC0C0',
-                                weight: 2,
-                                opacity: 0.6
-                            }).addTo(map);
-                
-                            // Add dots at each position
-                            const dots = shipPositions[ship.flight].map(pos => 
-                                L.circleMarker(pos, {
-                                    radius: 3,
-                                    fillColor:'#4BC0C0',
-                                    fillOpacity: 0.8,
-                                    stroke: false
-                                }).addTo(map)
-                            );
-                
-                            shipTrails[ship.flight] = {
-                                line: trail,
-                                dots: dots
-                            };
-                        } else {
-                            // Update existing trail
-                            shipTrails[ship.flight].line.setLatLngs(shipPositions[ship.flight]);
-                
-                            // Remove old dots
-                            shipTrails[ship.flight].dots.forEach(dot => map.removeLayer(dot));
-                
-                            // Create new dots
-                            shipTrails[ship.flight].dots = shipPositions[ship.flight].map(pos => 
-                                L.circleMarker(pos, {
-                                    radius: 3,
-                                    fillColor: '#4BC0C0',
-                                    fillOpacity: 0.8,
-                                    stroke: false
-                                }).addTo(map)
-                            );
-                        }
-                    }
-                }
-                
-    
-                // Your existing marker code stays exactly the same
-                let iconPath = 'img/boat_top.png';
+                  let iconPath = 'img/boat_top.png';
                 if (ship.length && parseFloat(ship.length) > 100) {
                     iconPath = 'img/big_cargo.png';
                 }
@@ -330,7 +205,6 @@ document.addEventListener("DOMContentLoaded", function() {
                     popupAnchor: [0, -16]
                 });
                 if (!shipMarkers[ship.flight]) {
-                    // Create new marker if it doesn't exist
                     console.log(`Creating new marker for ${ship.flight}`);
                     const marker = new L.Marker([latitude, longitude], {icon: shipIcon});
                     marker.bindPopup(createPopupContent(ship));
@@ -339,7 +213,6 @@ document.addEventListener("DOMContentLoaded", function() {
                     marker.addTo(map);
                     shipMarkers[ship.flight] = marker;
                 } else {
-                    // Update existing marker
                     const marker = shipMarkers[ship.flight];
                     marker.setIcon(shipIcon);
                     marker.setLatLng([latitude, longitude]);
@@ -354,21 +227,14 @@ document.addEventListener("DOMContentLoaded", function() {
         }
     });
     
-// At the end of updateMap, replace the current cleanup with:
 Object.keys(shipMarkers).forEach(shipName => {
     if (!activeShips.has(shipName)) {
         map.removeLayer(shipMarkers[shipName]);
-        map.removeLayer(shipTrails[shipName]);
-        shipTrails[shipName].dots.forEach(dot => map.removeLayer(dot));
         delete shipMarkers[shipName];
-        delete shipTrails[shipName];
-        // Don't delete position history - keep it for when ship returns
-        // delete shipPositions[shipName];
     }
 });
 }
 
-// Helper function to create popup content
 function createPopupContent(ship) {
     return `
     <div style="padding: 10px;">
@@ -380,9 +246,6 @@ function createPopupContent(ship) {
     </div>
     `;
 }
-
-
-  // Fetch and update ship data
   function fetchShipData() {
     console.log('Attempting to fetch ship data');
     $.getJSON('/api/arrivals', function(response) {
@@ -404,161 +267,7 @@ function createPopupContent(ship) {
     });
 }
 
-  // Fetch the ship data initially
   fetchShipData();
 
-  // Optionally set an interval to refresh the data periodically
-  setInterval(fetchShipData, 5000); // Refresh every half second
+  setInterval(fetchShipData, 1000); // refresh every second
 });
-
-//=============================================================
-// TOGGLE LOGIC
-//=============================================================
-/*
-var showingPlanes = false; // Track whether planes or ships are being shown
-
-function toggleDashboard() {
-    const isShowingAir = document.getElementById('air').checked;
-
-    // Update the data source URL and fetch the correct data
-    const dataUrl = isShowingAir ? '/api/planes' : '/api/arrivals';
-    fetchDashboardData(dataUrl);  // Fetch data from the correct endpoint
-
-    // Update the split-flap plugin and reload it with new data
-    sf.options.plugin = isShowingAir ? 'planes' : 'arrivals';  // Update the plugin based on the toggle
-    sf.board.clear();  // Clear the current board content
-    sf.items.load(sf.options);  // Load the new data into the board
-
-    // Dynamically change the headings based on the toggle
-    const headerContainer = document.getElementById('dashboardHeader');
-    if (isShowingAir) {
-        headerContainer.innerHTML = `
-            <div class="header" style="width: 780px; text-align: left">Flight Number</div>
-            <div class="header" style="width: 380px; text-align: left">Airline</div>
-            <div class="header" style="width: 210px; text-align: left">Type</div>
-            <div class="header" style="width: 210px; text-align: left">Country</div>
-        `;
-    } else {
-        headerContainer.innerHTML = `
-            <div class="header" style="width: 780px; text-align: left">Vessel Name</div>
-            <div class="header" style="width: 380px; text-align: left">Type</div>
-            <div class="header" style="width: 210px; text-align: left">Status</div> <!-- Red/Green light for ships -->
-        `;
-    }
-}
-
-
-// ===========================================================
-// Plane Stuff
-// ===========================================================
-// Global object to track plane markers by flight
-// Global object to track plane markers by flight// Global object to track plane markers by flight
-// Global object to track plane markers by flight
-/*
-const planeMarkers = {};
-function updateMapWithPlanes(planesData) {
-  planesData.forEach(function(plane) {
-      const latitude = parseFloat(plane.latitude);
-      const longitude = parseFloat(plane.longitude);
-      const cog = plane.cog ? parseFloat(plane.cog) : null;  // Course over Ground
-      const altitude = plane.altitude || 'N/A';  // Fetch the altitude
-
-      console.log(`Plane ${plane.flight} -> Latitude: ${latitude}, Longitude: ${longitude}, Cog: ${cog}, Altitude: ${altitude}`);
-
-      // Check if latitude and longitude are valid numbers
-      if (!isNaN(latitude) && !isNaN(longitude)) {
-          // Check if the plane already has a marker
-          if (planeMarkers[plane.flight]) {
-              // Update the existing marker's position
-              planeMarkers[plane.flight].setLatLng([latitude, longitude]);
-
-              // If Cog is available, rotate the marker
-              if (cog !== null) {
-                  planeMarkers[plane.flight].setRotationAngle(cog);
-              }
-              console.log(`Updated marker for plane ${plane.flight}`);
-          } else {
-              // Create a new marker if one doesn't exist
-              const planeIcon = L.icon({
-                  iconUrl: 'img/plane_icon.png',  // Path to your plane icon
-                  iconSize: [30, 30], // Adjust size as needed
-                  iconAnchor: [15, 15],
-                  popupAnchor: [0, -15]
-              });
-
-              // Create a new marker and add it to the map
-              const marker = L.marker([latitude, longitude], { icon: planeIcon }).addTo(map);
-
-              // If Cog is available, rotate the marker
-              if (cog !== null) {
-                  marker.setRotationAngle(cog);
-              }
-
-              console.log(`Marker created for plane ${plane.flight}`);
-
-              const popupContent = `<b>${plane.flight}</b>
-              <br>Airline: ${plane.airline}
-              <br>Speed: ${plane.sog || 'N/A'} knots
-              <br>Altitude (baro): ${altitude} m  <!-- Add altitude to popup -->
-              <br>Type: ${plane.type || 'Unknown'}
-              `;
-              
-              marker.bindPopup(popupContent);
-
-              // Store the marker in the global object
-              planeMarkers[plane.flight] = marker;
-
-              // Optional hover behavior to show popup
-              marker.on('mouseover', function () {
-                  this.openPopup();
-              });
-              marker.on('mouseout', function () {
-                  this.closePopup();
-              });
-          }
-      } else {
-          console.error(`Invalid coordinates for plane: ${plane.flight}`);
-      }
-  });
-}
-
-
-// Fetch and update plane data
-function fetchPlaneData() {
-  $.getJSON('/api/planes', function(response) {
-    console.log('API Response:', response); // Log entire response
-    if (response && response.data) {
-        console.log('Fetched planesData:', response.data);
-        updateMapWithPlanes(response.data);
-    } else {
-        console.error('No data received from planes API');
-    }
- }).fail(function(jqXHR, textStatus, errorThrown) {
-    console.error('Failed to load plane data from API:', textStatus, errorThrown);
- });
- 
-}
-
-
-// Fetch the plane data periodically
-setInterval(fetchPlaneData, 120000); // Refresh plane data every 10 seconds
-
-// ===================================================
-// PLANE DASHBOARD TOGGLE
-// ===================================================
-
-sf.plugins.planes = {
-  dataType: 'json',
-
-  url: function(options) {
-    return '/api/planes';  // Fetch from the planes API
-  },
-
-  formatData: function(response) {
-    // Extract only the flight numbers for now
-    return response.data.map(plane => ({
-      flight: plane.flight || 'Unknown Flight'  // Fallback if flight number is missing
-    }));
-  }
-};
-*/

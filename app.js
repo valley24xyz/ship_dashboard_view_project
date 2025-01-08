@@ -6,15 +6,13 @@ const port = process.env.PORT || 8080;
 
 // Store ships currently in the bounding box
 let shipsData = [];
-let shipCache = {}; // Cache to store ship data
-let socket = null; // Initialize socket as null
-let boundingBox = null; // Set initially to null
-let shipPositionHistory = {}; // Add this line to track position history //TRAILS
-
+let shipCache = {}; 
+let socket = null; 
+let boundingBox = null; 
 
 app.use('/', express.static('public'));
 
-// Helper function to check if a ship's position is within the bounding box
+// check if a ship's position is within the bounding box
 function isWithinBoundingBox(lat, lng) {
     if (!boundingBox) {
         console.error('Bounding box not set!');
@@ -35,7 +33,7 @@ function isWithinBoundingBox(lat, lng) {
 }
 
 
-// Function to subscribe to AISStream with the current bounding box
+// subscribe to AISStream with the current bounding box
 function subscribeToAIS(socket) {
     if (!boundingBox || !socket) {
         console.error("Cannot subscribe to AIS: Bounding box not set or socket not connected");
@@ -83,7 +81,7 @@ function getShipType(typeCode) {
     return 'Other';
 }
 
-// Function to handle AIS messages
+// handle AIS messages
 function handleAISMessage(event) {
     try {
         const aisMessage = JSON.parse(event.data);
@@ -128,47 +126,18 @@ function handleAISMessage(event) {
 
             if (isWithinBoundingBox(latitude, longitude)) {
                 console.log(`Ship ${shipName} is within the bounding box.`);
-                // Add position history tracking
-                if (!shipPositionHistory[shipName]) {
-                    shipPositionHistory[shipName] = [];
-                }
-    
-                const timestamp = new Date();
-                shipPositionHistory[shipName].push({
-                    time: timestamp,
-                    lat: latitude,
-                    lng: longitude,
-                    speed: positionReport.Sog
-                });
-
-                // Keep only last 5 positions
-                if (shipPositionHistory[shipName].length > 5) {
-                    shipPositionHistory[shipName].shift();
-                }
-
-                // Log full history when we have multiple positions
-                if (shipPositionHistory[shipName].length > 1) {
-                    console.log(`\nPosition history for ${shipName}:`);
-                    shipPositionHistory[shipName].forEach((pos, index) => {
-                        console.log(`  ${index + 1}. [${pos.lat}, ${pos.lng}] Speed: ${pos.speed || 'N/A'} knots at ${pos.time.toISOString()}`);
-                    });
-                   console.log('\n');
-                }
-
                 const shipData = {
                     flight: shipName,
                     latitude,
                     longitude,
                     cog: positionReport.Cog || 'N/A',
                     sog: positionReport.Sog || 'N/A',
-                    // Add these fields for the split-flap display
-                    city: shipCache[aisMessage.MetaData.MMSI]?.type || 'Loading...',  // This is used for the Type column
-                    gate: shipCache[aisMessage.MetaData.MMSI]?.type || 'Loading...',  // Backup field
-                    airline: "AIS",  // Required by split-flap but not displayed
-                    scheduled: "",   // Required by split-flap but not displayed
+                    city: shipCache[aisMessage.MetaData.MMSI]?.type || 'Loading...', 
+                    gate: shipCache[aisMessage.MetaData.MMSI]?.type || 'Loading...', 
+                    airline: "AIS", 
+                    scheduled: "",  
                     status: (positionReport.Sog && positionReport.Sog > 0) ? "A" : "B",
-                    remarks: "",     // Required by split-flap but not displayed
-                    // Keep the rest of your fields
+                    remarks: "",     
                     length: shipCache[aisMessage.MetaData.MMSI]?.length || 'N/A',
                     width: shipCache[aisMessage.MetaData.MMSI]?.width || 'N/A',
                     type: shipCache[aisMessage.MetaData.MMSI]?.type || 'Loading...'
@@ -179,15 +148,13 @@ function handleAISMessage(event) {
                     shipsData[existingIndex] = { 
                         ...shipsData[existingIndex], 
                         ...shipData 
-                    }; // Update while preserving existing data
+                    };
                 } else {
                     shipsData.push(shipData);
                 }
-
                 console.log('Updated shipsData:', shipsData);
             } else {
                 console.log(`Ship ${shipName} is outside the bounding box.`);
-                // Remove ship from shipsData if it exists
                 const existingIndex = shipsData.findIndex(ship => ship.flight === shipName);
                 if (existingIndex !== -1) {
                 shipsData.splice(existingIndex, 1);
@@ -203,7 +170,6 @@ function handleAISMessage(event) {
                 const length = dimension ? (dimension.A + dimension.B) : 'N/A';
                 const width = dimension ? (dimension.C + dimension.D) : 'N/A';
                 
-                // Update cache
                 shipCache[aisMessage.MetaData.MMSI] = {
                     ...shipCache[aisMessage.MetaData.MMSI],
                     length: length,
@@ -211,7 +177,6 @@ function handleAISMessage(event) {
                     type: getShipType(typeCode)
                 };
     
-                // Update existing ship in shipsData if it exists
                 const existingIndex = shipsData.findIndex(ship => ship.flight === shipName);
                 if (existingIndex !== -1) {
                     shipsData[existingIndex] = {
@@ -259,43 +224,24 @@ function initializeWebSocket() {
         console.error("WebSocket error:", error);
     };
 }
-
-// Initialize the WebSocket when the server starts
 initializeWebSocket();
-
-
-// API route to serve AIS data directly
 app.get('/api/arrivals', (req, res) => {
-    // Add position history to each ship's data
-    const shipsWithHistory = shipsData.map(ship => ({
-        ...ship,
-        positionHistory: shipPositionHistory[ship.flight] || []
-    }));
-    console.log('Sending shipsData with history:', JSON.stringify(shipsWithHistory, null, 2));
-    res.json({ data: shipsWithHistory });
+    res.json({ data: shipsData });
 });
 
-// API route to update bounding box dynamically
 app.get('/api/setBoundingBox', (req, res) => {
-    const { neLat, neLng, swLat, swLng, zoom } = req.query;  // Add zoom to destructuring
-
-    // Clear existing ships data when bounding box changes
-    shipsData = [];  // Add this line
-
-    // Correct the bounding box interpretation
+    const { neLat, neLng, swLat, swLng, zoom } = req.query;
+    shipsData = [];
     boundingBox = {
-        nw: { lat: parseFloat(neLat), lng: parseFloat(swLng) }, // Northwest (top-left) = neLat + swLng
-        se: { lat: parseFloat(swLat), lng: parseFloat(neLng) }  // Southeast (bottom-right) = swLat + neLng
+        nw: { lat: parseFloat(neLat), lng: parseFloat(swLng) },
+        se: { lat: parseFloat(swLat), lng: parseFloat(neLng) } 
     };
 
     console.log('Updated bounding box:', boundingBox);
-
-    // Re-subscribe to AIS with the corrected bounding box
     subscribeToAIS(socket);
     res.json({ success: true, boundingBox });
 });
 
-// Add this to your existing app.js routes
 app.get('/api/resubscribe', (req, res) => {
     try {
         if (boundingBox) {
@@ -309,93 +255,6 @@ app.get('/api/resubscribe', (req, res) => {
     }
 });
 
-// Start the server
 app.listen(port, () => {
     console.log('split flap started on port ' + port);
 });
-
-
-// =============================================================================
-// Plane stuff
-// =============================================================================
-/*
-const axios = require('axios');
-
-// OpenSky Bounding Box
-const openskyBoundingBox = {
-
-    nw: { lat: 37.900682, lng: -122.872432 }, // Northwest (top-left)
-    se: { lat: 37.578706, lng: -122.240619 }  // Southeast (bottom-right)
-};
-
-// Function to fetch plane data from OpenSky API
-async function fetchPlaneData() {
-    const url = `https://opensky-network.org/api/states/all?lamin=${openskyBoundingBox.se.lat}&lomin=${openskyBoundingBox.nw.lng}&lamax=${openskyBoundingBox.nw.lat}&lomax=${openskyBoundingBox.se.lng}&extended=1`;
-    try {
-        const response = await axios.get(url, {
-            auth: {
-                username: 'catx123x',
-                password: 'sednyk-0hamtu-jyvbYv'
-            }
-        });
-        console.log('OpenSky API raw response:', response.data);
-        return response.data.states;
-    } catch (error) {
-        console.error('Error fetching plane data:', error);
-        return [];
-    }
-}
-
-
-const aircraftCategoryMap = {
-    0: "Unknown",
-    1: "Unknown",
-    2: "Light",
-    3: "Small",
-    4: "Large",
-    5: "High Vortex Large",
-    6: "Heavy",
-    7: "High Performance",
-    8: "Rotorcraft",
-    9: "Glider",
-    10: "Lighter-than-air",
-    11: "Skydiver",
-    12: "Ultralight",
-    13: "Unknown",
-    14: "UAV",
-    15: "Spacecraft",
-    16: "Emergency",
-    17: "Surface",
-    18: "Obstacle",
-    19: "Obstacle",
-    20: "Obstacle"
-};
-
-const airlineMap = require('./cleanedAirlineMap');  // Use the cleaned airline map
-
-// API route to serve plane data
-// API route to serve plane data
-app.get('/api/planes', async (req, res) => {
-    const planesData = await fetchPlaneData();
-    const formattedPlanes = planesData.map((plane) => {
-        const flightCode = plane[1] || "Unknown";
-        const airlinePrefix = flightCode.trim().slice(0, 3); // Extract the first three characters
-        const airline = airlineMap[airlinePrefix] || "Unknown Airline"; // Lookup in airlineMap
-
-        // Barometric altitude
-        const altitude = plane[7] ? plane[7].toFixed(2) : 'N/A';  // Barometric altitude in meters
-
-        return {
-            flight: flightCode,
-            latitude: plane[6],
-            longitude: plane[5],
-            cog: plane[10] ? plane[10].toFixed(2) : 'N/A',
-            sog: plane[9] ? (plane[9] * 1.94384).toFixed(2) : 'N/A',
-            type: aircraftCategoryMap[plane[8]] || "Unknown",
-            airline: airline,  // Use airline from the airlineMap
-            altitude: altitude // Include altitude in the response
-        };
-    });
-    res.json({ data: formattedPlanes });
-});
-*/
