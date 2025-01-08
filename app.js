@@ -9,8 +9,24 @@ let shipsData = [];
 let shipCache = {}; 
 let socket = null; 
 let boundingBox = null; 
+const SHIP_TIMEOUT = 60000; 
 
 app.use('/', express.static('public'));
+
+function updateShipTimestamp(shipName) {
+    if (!shipCache[shipName]) {
+        shipCache[shipName] = {};
+    }
+    shipCache[shipName].lastSeen = Date.now();
+}
+
+function cleanupStaleShips() {
+    const now = Date.now();
+    shipsData = shipsData.filter(ship => {
+        const shipTimestamp = shipCache[ship.flight]?.lastSeen || 0;
+        return (now - shipTimestamp) < SHIP_TIMEOUT;
+    });
+}
 
 // check if a ship's position is within the bounding box
 function isWithinBoundingBox(lat, lng) {
@@ -126,6 +142,7 @@ function handleAISMessage(event) {
 
             if (isWithinBoundingBox(latitude, longitude)) {
                 console.log(`Ship ${shipName} is within the bounding box.`);
+                updateShipTimestamp(shipName);  // Add this line
                 const shipData = {
                     flight: shipName,
                     latitude,
@@ -140,7 +157,8 @@ function handleAISMessage(event) {
                     remarks: "",     
                     length: shipCache[aisMessage.MetaData.MMSI]?.length || 'N/A',
                     width: shipCache[aisMessage.MetaData.MMSI]?.width || 'N/A',
-                    type: shipCache[aisMessage.MetaData.MMSI]?.type || 'Loading...'
+                    type: shipCache[aisMessage.MetaData.MMSI]?.type || 'Loading...',
+                    lastUpdate: Date.now()
                 };
 
                 const existingIndex = shipsData.findIndex(ship => ship.flight === shipName);
@@ -156,9 +174,6 @@ function handleAISMessage(event) {
             } else {
                 console.log(`Ship ${shipName} is outside the bounding box.`);
                 const existingIndex = shipsData.findIndex(ship => ship.flight === shipName);
-                if (existingIndex !== -1) {
-                shipsData.splice(existingIndex, 1);
-                }
             }
         } else if (aisMessage.MessageType === 'ShipStaticData') {
             const staticData = aisMessage.Message.ShipStaticData;
@@ -224,17 +239,19 @@ function initializeWebSocket() {
         console.error("WebSocket error:", error);
     };
 }
+setInterval(cleanupStaleShips, 10000); 
+
 initializeWebSocket();
 app.get('/api/arrivals', (req, res) => {
+    cleanupStaleShips();
     res.json({ data: shipsData });
 });
 
 app.get('/api/setBoundingBox', (req, res) => {
-    const { neLat, neLng, swLat, swLng, zoom } = req.query;
-    shipsData = [];
+    const { neLat, neLng, swLat, swLng } = req.query;
     boundingBox = {
         nw: { lat: parseFloat(neLat), lng: parseFloat(swLng) },
-        se: { lat: parseFloat(swLat), lng: parseFloat(neLng) } 
+        se: { lat: parseFloat(swLat), lng: parseFloat(neLng) }
     };
 
     console.log('Updated bounding box:', boundingBox);

@@ -269,5 +269,5 @@ window.onerror = function(msg, url, lineNo, columnNo, error) {
   
     fetchShipData();
   
-    setInterval(fetchShipData, 2500); // refresh every second
+    setInterval(fetchShipData, 2000); // refresh every 2 second
   });
